@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Inspire\Collection;
+namespace Inspira\Collection;
 
 use ArrayObject;
-use Inspire\Collection\Exceptions\CollectionItemNotFoundException;
-use Inspire\Collection\Exceptions\CollectionNotAccessibleException;
-use Inspire\Contracts\Arrayable;
+use Inspira\Collection\Exceptions\CollectionItemNotFoundException;
+use Inspira\Collection\Exceptions\CollectionNotAccessibleException;
+use Inspira\Contracts\Arrayable;
 use OutOfBoundsException;
 use ReturnTypeWillChange;
 use Traversable;

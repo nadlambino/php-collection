@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Inspire\Collection\Exceptions;
+namespace Inspira\Collection\Exceptions;
 
 use Throwable;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Inspire\Collection;
+namespace Inspira\Collection;
 
 enum FilterEnum
 {
