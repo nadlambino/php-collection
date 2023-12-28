@@ -1,0 +1,21 @@
+{
+    "name": "inspira/collection",
+    "description": "PHP collection component.",
+    "type": "library",
+    "require": {
+        "inspira/contracts": "dev-master"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Inspira\\Collection\\": "."
+        }
+    },
+    "authors": [
+        {
+            "name": "Ronald Lambino",
+            "email": "50892397+nadlambino@users.noreply.github.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
