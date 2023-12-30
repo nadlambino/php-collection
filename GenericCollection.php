@@ -14,15 +14,20 @@ use Inspira\Collection\Exceptions\ItemNotFoundException;
 use Traversable;
 
 /**
+ * GenericCollection class represents a collection of items with specified types.
+ *
  * @template T The type of collection item.
+ * @package Inspira\Collection
  */
 class GenericCollection implements CollectionInterface
 {
 	/**
-	 * @param array<string|integer, T>|T[] $items
-	 * @param T|Type|string|int|float|bool|null $type
-	 * @param bool $isLiteralType
-	 * @param bool $isMutable
+	 * Constructor for GenericCollection.
+	 *
+	 * @param array<string|integer, T>|T[] $items The initial set of items for the collection.
+	 * @param T|Type|string|int|float|bool|null $type The expected type of collection items.
+	 * @param bool $isLiteralType Indicates whether the type is literal or not.
+	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
 	public function __construct(
 		protected array $items = [],
@@ -34,6 +39,12 @@ class GenericCollection implements CollectionInterface
 		$this->validateType();
 	}
 
+	/**
+	 * Validates the type of each item in the collection against the expected type.
+	 *
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
+	 */
 	protected function validateType()
 	{
 		$expectedType = $this->getType();
@@ -57,6 +68,12 @@ class GenericCollection implements CollectionInterface
 		}
 	}
 
+	/**
+	 * Checks if the given item is of a valid type.
+	 *
+	 * @param mixed $item The item to check.
+	 * @return bool
+	 */
 	protected function isValidType(mixed $item): bool
 	{
 		$actualType = $this->getItemType($item);
@@ -65,7 +82,13 @@ class GenericCollection implements CollectionInterface
 		return $expectedType === $actualType;
 	}
 
-	protected function getItemType(mixed $item)
+	/**
+	 * Gets the type of the given item.
+	 *
+	 * @param mixed $item The item to get the type of.
+	 * @return mixed
+	 */
+	protected function getItemType(mixed $item): mixed
 	{
 		if ($this->isLiteralType) {
 			return $item;
@@ -74,14 +97,18 @@ class GenericCollection implements CollectionInterface
 		return is_object($item) ? get_class($item) : gettype($item);
 	}
 
+	/**
+	 * Gets the type of the collection.
+	 *
+	 * @return mixed
+	 */
 	public function getType(): mixed
 	{
 		return $this->type instanceof Type ? $this->type->value : $this->type;
 	}
 
 	/**
-	 * Get the item from the collection or throw an exception if it does not exist
-	 * This is to differentiate the value between a null item and non-existing item
+	 * Magic method to get the item from the collection or throw an exception if it does not exist.
 	 *
 	 * @param string $name The name of the collection item.
 	 * @return T|mixed
@@ -96,33 +123,61 @@ class GenericCollection implements CollectionInterface
 		throw new ItemNotFoundException("Item [$name] does not exist in the collection.");
 	}
 
+	/**
+	 * Serializes the collection to an array.
+	 *
+	 * @return array
+	 */
 	public function __serialize(): array
 	{
 		return $this->items;
 	}
 
+	/**
+	 * Unserializes the collection from an array.
+	 *
+	 * @param array $data The data to unserialize.
+	 */
 	public function __unserialize(array $data): void
 	{
 		$this->items = $data;
 	}
 
+	/**
+	 * Converts the collection to an array.
+	 *
+	 * @return array
+	 */
 	public function toArray(): array
 	{
 		return $this->items;
 	}
 
+	/**
+	 * Gets the count of items in the collection.
+	 *
+	 * @return int
+	 */
 	public function count(): int
 	{
 		return count($this->items);
 	}
 
+	/**
+	 * Checks if an offset exists in the collection.
+	 *
+	 * @param mixed $offset The offset to check.
+	 * @return bool
+	 */
 	public function offsetExists(mixed $offset): bool
 	{
 		return isset($this->items[$offset]);
 	}
 
 	/**
-	 * @param mixed $offset
+	 * Gets the item at the specified offset.
+	 *
+	 * @param mixed $offset The offset to retrieve.
 	 * @return mixed|T
 	 */
 	public function offsetGet(mixed $offset): mixed
@@ -130,44 +185,73 @@ class GenericCollection implements CollectionInterface
 		return $this->items[$offset] ?? null;
 	}
 
+	/**
+	 * Sets the value at the specified offset.
+	 * If offset is empty, push the value to items.
+	 *
+	 * @param mixed $offset The offset to set.
+	 * @param mixed $value The value to set.
+	 */
 	public function offsetSet(mixed $offset, mixed $value): void
 	{
 		empty($offset) ? $this->items[] = $value : $this->items[$offset] = $value;
 	}
 
+	/**
+	 * Unsets the item at the specified offset.
+	 *
+	 * @param mixed $offset The offset to unset.
+	 */
 	public function offsetUnset(mixed $offset): void
 	{
 		unset($this->items[$offset]);
 	}
 
+	/**
+	 * Gets an iterator for the collection.
+	 *
+	 * @return Traversable
+	 */
 	public function getIterator(): Traversable
 	{
 		return new ArrayIterator($this->items);
 	}
 
+	/**
+	 * Checks if the collection is empty.
+	 *
+	 * @return bool
+	 */
 	public function isEmpty(): bool
 	{
 		return $this->count() === 0;
 	}
 
 	/**
-	 * @inheritdoc
-	 * @return mixed|T
+	 * Gets the first item in the collection or null if the collection is empty.
+	 *
+	 * @return T|mixed|null
 	 */
 	public function first(): mixed
 	{
 		return reset($this->items) ?: null;
 	}
 
+	/**
+	 * Creates a new GenericCollection instance from the given array.
+	 *
+	 * @param array $data The array to create the collection from.
+	 * @return static
+	 */
 	public static function make(array $data): static
 	{
 		return new static($data);
 	}
 
 	/**
-	 * Get the last item in the collection or return null
+	 * Gets the last item in the collection or null if the collection is empty.
 	 *
-	 * @return T|mixed
+	 * @return T|mixed|null
 	 */
 	public function last(): mixed
 	{
@@ -175,9 +259,12 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @param int $index
-	 * @param bool $strict
+	 * Gets the item at the specified index in the collection.
+	 *
+	 * @param int $index The index to retrieve.
+	 * @param bool $strict Indicates whether to throw an exception if the index does not exist.
 	 * @return T|mixed
+	 * @throws ItemNotFoundException
 	 */
 	public function index(int $index, bool $strict = false): mixed
 	{
@@ -188,6 +275,13 @@ class GenericCollection implements CollectionInterface
 		return $this->offsetGet($index);
 	}
 
+	/**
+	 * Extracts a column from the items in the collection.
+	 *
+	 * @param int|string $column The column to extract.
+	 * @param ?string $key The key to use as the index for the returned array.
+	 * @return static
+	 */
 	public function column(string|int $column, string $key = null): static
 	{
 		$items = array_column($this->items, $column, $key);
@@ -195,6 +289,13 @@ class GenericCollection implements CollectionInterface
 		return new static($items);
 	}
 
+	/**
+	 * Chunks the collection into smaller collections.
+	 *
+	 * @param int $length The size of each chunk.
+	 * @param bool $preserveKeys Whether to preserve the keys of the original collection.
+	 * @return static
+	 */
 	public function chunk(int $length, bool $preserveKeys = false): static
 	{
 		$items = array_chunk($this->items, $length, $preserveKeys);
@@ -203,7 +304,9 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @param Traversable|array $keys
+	 * Combines the collection with the keys provided.
+	 *
+	 * @param Traversable|array $keys The keys to combine with the collection.
 	 * @return static
 	 */
 	public function combine(Traversable|array $keys): static
@@ -221,8 +324,9 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @inheritdoc
-	 * @param T|mixed $item
+	 * Checks if the collection contains a given item.
+	 *
+	 * @param T|mixed $item The item to check for.
 	 * @return bool
 	 */
 	public function has(mixed $item): bool
@@ -231,7 +335,8 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @inheritdoc
+	 * Gets a collection of the keys in the current collection.
+	 *
 	 * @return static
 	 */
 	public function keys(): static
@@ -240,7 +345,8 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @inheritdoc
+	 * Gets a collection of the values in the current collection.
+	 *
 	 * @return static
 	 */
 	public function values(): static
@@ -249,9 +355,12 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @inheritdoc
-	 * @param T|mixed $item
+	 * Appends an item to the collection.
+	 *
+	 * @param T|mixed $item The item to append.
 	 * @return static
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
 	 */
 	public function append(mixed $item): static
 	{
@@ -274,13 +383,17 @@ class GenericCollection implements CollectionInterface
 
 		$items = $this->items;
 		$items[] = $item;
+
 		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
 	}
 
 	/**
-	 * @inheritdoc
-	 * @param T|mixed $item
+	 * Prepends an item to the collection.
+	 *
+	 * @param T|mixed $item The item to prepend.
 	 * @return static
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
 	 */
 	public function prepend(mixed $item): static
 	{
@@ -289,10 +402,10 @@ class GenericCollection implements CollectionInterface
 			$actualType = $this->getItemType($item);
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 			if ($this->isLiteralType) {
-				throw new InvalidLiteralTypeException("Invalid item type encountered during preprend. Expecting literal [$expectedType], [$actualType] given.");
+				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
-			throw new InvalidTypeException("Invalid item type encountered during preprend. Expecting type [$expectedType], [$actualType] given.");
+			throw new InvalidTypeException("Invalid item type encountered during prepend. Expecting type [$expectedType], [$actualType] given.");
 		}
 
 		if ($this->isMutable) {
@@ -308,8 +421,9 @@ class GenericCollection implements CollectionInterface
 	}
 
 	/**
-	 * @inheritdoc
-	 * @param int|string $key
+	 * Removes the item at the specified key from the collection.
+	 *
+	 * @param int|string $key The key to unset.
 	 * @return static
 	 */
 	public function unset(int|string $key): static
@@ -326,11 +440,25 @@ class GenericCollection implements CollectionInterface
 		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
 	}
 
+	/**
+	 * Filters the collection based on a given condition.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param mixed $comparison The comparison value.
+	 * @param mixed $value The value to compare against.
+	 * @return static
+	 */
 	public function where(string $column, mixed $comparison, mixed $value): static
 	{
 		// TODO: Implement where() method.
 	}
 
+	/**
+	 * Filters the collection using a callback function.
+	 *
+	 * @param callable|Closure $callback The callback function to use for filtering.
+	 * @return static
+	 */
 	public function filter(callable|Closure $callback): static
 	{
 		// TODO: Implement filter() method.
