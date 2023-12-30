@@ -320,7 +320,11 @@ class GenericCollection implements CollectionInterface
 			return $this;
 		}
 
-		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
+		$collection = clone $this;
+		$collection->items = $items;
+
+		/** @var static */
+		return $collection;
 	}
 
 	/**
@@ -381,10 +385,11 @@ class GenericCollection implements CollectionInterface
 			return $this;
 		}
 
-		$items = $this->items;
-		$items[] = $item;
+		$collection = clone $this;
+		$collection->items[] = $item;
 
-		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
+		/** @var static */
+		return $collection;
 	}
 
 	/**
@@ -414,10 +419,10 @@ class GenericCollection implements CollectionInterface
 			return $this;
 		}
 
-		$items = $this->items;
-		array_unshift($items, $item);
+		$collection = clone $this;
+		array_unshift($collection->items, $item);
 
-		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
+		return $collection;
 	}
 
 	/**
@@ -434,10 +439,10 @@ class GenericCollection implements CollectionInterface
 			return $this;
 		}
 
-		$items = $this->items;
-		unset($items[$key]);
+		$collection = clone $this;
+		unset($collection->items[$key]);
 
-		return new static($items, $this->type, $this->isLiteralType, $this->isMutable);
+		return $collection;
 	}
 
 	/**
