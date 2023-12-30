@@ -15,8 +15,16 @@ use Inspira\Contracts\Arrayable;
 use IteratorAggregate;
 use Traversable;
 
+/**
+ * @template T The type of collection item.
+ */
 class GenericCollection implements IteratorAggregate, ArrayAccess, Countable, Arrayable
 {
+	/**
+	 * @param array<string|integer, T>|T[] $items
+	 * @param T|Type|string|int|float|bool|null $type
+	 * @param bool $isLiteralType
+	 */
 	public function __construct(protected array $items = [], protected Type|string|int|float|bool|null $type = Type::MIXED, protected bool $isLiteralType = false)
 	{
 		$this->validateType();
@@ -24,12 +32,12 @@ class GenericCollection implements IteratorAggregate, ArrayAccess, Countable, Ar
 
 	protected function validateType()
 	{
-		if ($this->type === Type::MIXED || $this->isEmpty()) {
+		$expectedType = $this->getType();
+		if (empty($expectedType) || $expectedType === Type::MIXED->value || $this->isEmpty()) {
 			return;
 		}
 
 		foreach ($this->items as $key => $item) {
-			$expectedType = $this->getType();
 			$actualType = $this->getItemType($item);
 
 			if ($expectedType === $actualType) {
@@ -101,6 +109,10 @@ class GenericCollection implements IteratorAggregate, ArrayAccess, Countable, Ar
 		return isset($this->items[$offset]);
 	}
 
+	/**
+	 * @param mixed $offset
+	 * @return mixed|T
+	 */
 	public function offsetGet(mixed $offset): mixed
 	{
 		return $this->items[$offset] ?? null;
@@ -124,5 +136,14 @@ class GenericCollection implements IteratorAggregate, ArrayAccess, Countable, Ar
 	public function isEmpty(): bool
 	{
 		return $this->count() === 0;
+	}
+
+	/**
+	 * @inheritdoc
+	 * @return mixed|T
+	 */
+	public function first(): mixed
+	{
+		return reset($this->items) ?: null;
 	}
 }
