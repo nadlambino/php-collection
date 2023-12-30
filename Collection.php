@@ -265,7 +265,7 @@ class Collection extends ArrayObject implements Arrayable
 		}
 
 		if (!isset($this[$name])) {
-			throw new CollectionItemNotFoundException(sprintf('Property `%s` does not exist in the collection', $name));
+			throw new CollectionItemNotFoundException(sprintf('Property [%s] does not exist in the collection', $name));
 		}
 
 		return $this[$name];
