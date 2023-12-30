@@ -10,6 +10,7 @@ use Inspira\Collection\Exceptions\CollectionItemNotFoundException;
 use Inspira\Collection\Exceptions\CollectionNotAccessibleException;
 use Inspira\Contracts\Arrayable;
 use OutOfBoundsException;
+use PHPUnit\Exception;
 use ReturnTypeWillChange;
 use Traversable;
 
@@ -88,8 +89,12 @@ class Collection extends ArrayObject implements Arrayable
 			return null;
 		}
 
-		$items->seek($index);
-		$item = $items->current();
+		try {
+			$items->seek($index);
+			$item = $items->current();
+		} catch (Exception) {
+			throw new OutOfBoundsException("Can not access an item from non-existing index.");
+		}
 
 		return $this->isTraversable($item) ? new static($item) : $item;
 	}
