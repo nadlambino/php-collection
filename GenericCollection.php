@@ -48,7 +48,7 @@ class GenericCollection implements CollectionInterface
 	protected function validateType()
 	{
 		$expectedType = $this->getType();
-		if (empty($expectedType) || $expectedType === Type::MIXED->value || $this->isEmpty()) {
+		if ($this->isEmpty()) {
 			return;
 		}
 
@@ -60,12 +60,24 @@ class GenericCollection implements CollectionInterface
 			}
 
 			if ($this->isLiteralType) {
-				$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
+				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered at position [$key]. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
 			throw new InvalidTypeException("Invalid item type encountered at position [$key]. Expecting type [$expectedType], [$actualType] given.");
 		}
+	}
+
+	/**
+	 * Get a string representation of actual and expected literal type
+	 *
+	 * @param mixed $actual
+	 * @param mixed $expected
+	 * @return array
+	 */
+	protected function getActualAndLiteralTypeAsString(mixed $actual, mixed $expected): array
+	{
+		return [json_encode($actual), json_encode($expected)];
 	}
 
 	/**
@@ -79,7 +91,7 @@ class GenericCollection implements CollectionInterface
 		$actualType = $this->getItemType($item);
 		$expectedType = $this->getType();
 
-		return $expectedType === $actualType;
+		return $expectedType === '' || $expectedType === Type::MIXED->value || $expectedType === $actualType;
 	}
 
 	/**
@@ -121,6 +133,24 @@ class GenericCollection implements CollectionInterface
 		}
 
 		throw new ItemNotFoundException("Item [$name] does not exist in the collection.");
+	}
+
+	public function __set(string $name, $value): void
+	{
+		if ($this->isValidType($value)) {
+			$this->items[$name] = $value;
+			return;
+		}
+
+		$expectedType = $this->getType();
+		$actualType = $this->getItemType($value);
+
+		if ($this->isLiteralType) {
+			[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
+			throw new InvalidLiteralTypeException("Invalid item type encountered during __set. Expecting literal [$expectedType], [$actualType] given.");
+		}
+
+		throw new InvalidTypeException("Invalid item type encountered during __set. Expecting type [$expectedType], [$actualType] given.");
 	}
 
 	/**
@@ -372,7 +402,9 @@ class GenericCollection implements CollectionInterface
 		if (!$this->isValidType($item)) {
 			$actualType = $this->getItemType($item);
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
+
 			if ($this->isLiteralType) {
+				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during append. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -406,7 +438,9 @@ class GenericCollection implements CollectionInterface
 		if (!$this->isValidType($item)) {
 			$actualType = $this->getItemType($item);
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
+
 			if ($this->isLiteralType) {
+				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
