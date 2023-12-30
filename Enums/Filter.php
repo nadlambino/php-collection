@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Inspira\Collection;
+namespace Inspira\Collection\Enums;
 
-enum FilterEnum
+enum Filter
 {
 	case LIKE;
 	case WHERE;

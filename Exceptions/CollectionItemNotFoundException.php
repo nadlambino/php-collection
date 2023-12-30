@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Inspira\Collection\Exceptions;
 
-use Throwable;
+use Exception;
 
-class CollectionItemNotFoundException extends \Exception
+class CollectionItemNotFoundException extends Exception
 {
 
 }

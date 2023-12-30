@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Inspira\Collection;
 
 use ArrayObject;
+use Inspira\Collection\Enums\Filter;
 use Inspira\Collection\Exceptions\CollectionItemNotFoundException;
 use Inspira\Collection\Exceptions\CollectionNotAccessibleException;
 use Inspira\Contracts\Arrayable;
@@ -14,7 +15,7 @@ use Traversable;
 
 class Collection extends ArrayObject implements Arrayable
 {
-	final public function __construct(object|array $array = [], int $flags = 0, string $iteratorClass = "ArrayIterator")
+	public function __construct(object|array $array = [], int $flags = 0, string $iteratorClass = "ArrayIterator")
 	{
 		parent::__construct($array, $flags, $iteratorClass);
 	}
@@ -122,7 +123,7 @@ class Collection extends ArrayObject implements Arrayable
 	 */
 	public function where(mixed $filters, bool $strict = true): static
 	{
-		return $this->filter($filters, $strict, FilterEnum::WHERE);
+		return $this->filter($filters, $strict, Filter::WHERE);
 	}
 
 	/**
@@ -138,7 +139,7 @@ class Collection extends ArrayObject implements Arrayable
 	 */
 	public function like(mixed $filters, bool $strict = false): static
 	{
-		return $this->filter($filters, $strict, FilterEnum::LIKE);
+		return $this->filter($filters, $strict, Filter::LIKE);
 	}
 
 	public function toArray(): array
@@ -170,7 +171,7 @@ class Collection extends ArrayObject implements Arrayable
 		return is_array($data) || is_object($data) || $data instanceof Traversable;
 	}
 
-	private function filter(mixed $filters, bool $strict, FilterEnum $type): static
+	private function filter(mixed $filters, bool $strict, Filter $type): static
 	{
 		$filters = $filters instanceof Traversable ? iterator_to_array($filters) : $filters;
 
@@ -181,7 +182,7 @@ class Collection extends ArrayObject implements Arrayable
 				$filterValue = $strict === false ? strtolower((string) $filters) : $filters;
 
 				return match (true) {
-					$type === FilterEnum::LIKE  => str_contains($itemValue, $filterValue),
+					$type === Filter::LIKE  => str_contains($itemValue, $filterValue),
 					$strict === true            => $itemValue === $filterValue,
 					$strict === false           => $itemValue == $filterValue,
 					default                     => false
@@ -207,11 +208,11 @@ class Collection extends ArrayObject implements Arrayable
 				$itemValue = $strict === false ? strtolower((string) $item[$key]) : $item[$key];
 				$filterValue = $strict === false ? strtolower((string) $value) : $value;
 
-				if ($type === FilterEnum::LIKE && !str_contains($itemValue, $filterValue)) {
+				if ($type === Filter::LIKE && !str_contains($itemValue, $filterValue)) {
 					return false;
 				}
 
-				if ($type === FilterEnum::WHERE) {
+				if ($type === Filter::WHERE) {
 					return match (true) {
 						$strict === true && $itemValue !== $filterValue,
 						$strict === false && $itemValue != $filterValue => false,
