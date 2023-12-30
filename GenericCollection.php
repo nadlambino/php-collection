@@ -30,10 +30,10 @@ class GenericCollection implements CollectionInterface
 	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
 	public function __construct(
-		protected array $items = [],
+		protected array                           $items = [],
 		protected Type|string|int|float|bool|null $type = Type::MIXED,
-		protected bool $isLiteralType = false,
-		protected bool $isMutable = false
+		protected bool                            $isLiteralType = false,
+		protected bool                            $isMutable = false
 	)
 	{
 		$this->validateType();
