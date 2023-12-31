@@ -19,9 +19,16 @@ trait Whereable
 {
 	/**
 	 * Filters the collection based on a given condition.
+	 * When only 1 argument is given, it will be used as the value to compare against the item
 	 *
-	 * @param string|Closure $column The column to filter on.
-	 * @param mixed $comparison The comparison value.
+	 * When the first argument is a Closure, all other arguments will be ignored. The closure
+	 * will then be directly passed to the $this->filter method.
+	 *
+	 * When 2 arguments is given, the first argument will be the column and the second argument
+	 * will be the value. The default comparison operator is "="|"==" which does a loose comparison.
+	 *
+	 * @param string|Closure $column The column to filter on or the value to compare against or the closure to passed on the filter.
+	 * @param mixed $comparison The comparison operator or the value to compare against.
 	 * @param mixed $value The value to compare against.
 	 * @return static
 	 */
