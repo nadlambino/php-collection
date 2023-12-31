@@ -515,6 +515,14 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($column);
 	}
 
+	/**
+	 * Filters the collection to include only items where the specified column is like the given value.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param string $value The value to compare against.
+	 * @param bool $strict Indicates whether to perform a strict comparison.
+	 * @return static The filtered collection.
+	 */
 	public function whereLike(string $column, string $value, bool $strict = false): static
 	{
 		$comparison = match (true) {
@@ -527,6 +535,14 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%'), $strict));
 	}
 
+	/**
+	 * Filters the collection to exclude items where the specified column is like the given value.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param string $value The value to compare against.
+	 * @param bool $strict Indicates whether to perform a strict comparison.
+	 * @return static The filtered collection.
+	 */
 	public function whereNotLike(string $column, string $value, bool $strict = false): static
 	{
 		$comparison = match (true) {
@@ -539,36 +555,87 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%'), $strict));
 	}
 
+	/**
+	 * Filters the collection to include only items where the specified column is null.
+	 *
+	 * @param string $column The column to filter on.
+	 * @return static The filtered collection.
+	 */
 	public function whereNull(string $column): static
 	{
 		return $this->filter($this->getFilterCallback($column, '=', null));
 	}
 
+	/**
+	 * Filters the collection to exclude items where the specified column is null.
+	 *
+	 * @param string $column The column to filter on.
+	 * @return static The filtered collection.
+	 */
 	public function whereNotNull(string $column): static
 	{
 		return $this->filter($this->getFilterCallback($column, '!=', null));
 	}
 
+	/**
+	 * Filters the collection to include only items where the specified column is between the given bounds.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param mixed $lowerBound The lower bound of the range.
+	 * @param mixed $upperBound The upper bound of the range.
+	 * @return static The filtered collection.
+	 */
 	public function whereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'BETWEEN', [$lowerBound, $upperBound]));
 	}
 
+	/**
+	 * Filters the collection to exclude items where the specified column is between the given bounds.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param mixed $lowerBound The lower bound of the range.
+	 * @param mixed $upperBound The upper bound of the range.
+	 * @return static The filtered collection.
+	 */
 	public function whereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'NOT_BETWEEN', [$lowerBound, $upperBound]));
 	}
 
+	/**
+	 * Filters the collection to include only items where the specified column is in the given array of values.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param array $values The array of values to check against.
+	 * @return static The filtered collection.
+	 */
 	public function whereIn(string $column, array $values): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'IN', $values));
 	}
 
+	/**
+	 * Filters the collection to exclude items where the specified column is in the given array of values.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param array $values The array of values to check against.
+	 * @return static The filtered collection.
+	 */
 	public function whereNotIn(string $column, array $values): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'NOT_IN', $values));
 	}
 
+	/**
+	 * Creates a callback function for filtering the collection based on a specified condition.
+	 *
+	 * @param string $column The column to filter on.
+	 * @param string $comparison The comparison value.
+	 * @param mixed $search The value to compare against.
+	 * @param bool $strict Indicates whether to perform a strict comparison.
+	 * @return Closure The callback function for filtering the collection.
+	 */
 	protected function getFilterCallback(string $column, string $comparison, mixed $search, bool $strict = false): Closure
 	{
 		return function ($item) use ($column, $comparison, $search, $strict): bool {
@@ -602,7 +669,15 @@ class GenericCollection implements CollectionInterface
 		};
 	}
 
-	protected function getItemValue(mixed $item, string $column)
+	/**
+	 * Gets the value of a specified column from an item in the collection.
+	 *
+	 * @param mixed $item The item to retrieve the value from.
+	 * @param string $column The name of the column to get the value from.
+	 * @return mixed The value of the specified column in the item.
+	 * @throws Error When the column is not found in the collection item type.
+	 */
+	protected function getItemValue(mixed $item, string $column): mixed
 	{
 		$expectedType = $this->getType();
 		$actualType = gettype($item);
