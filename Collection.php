@@ -352,10 +352,10 @@ class Collection implements CollectionInterface
 	/**
 	 * Combines the collection with the keys provided.
 	 *
-	 * @param Traversable|array $keys The keys to combine with the collection.
+	 * @param array|CollectionInterface $keys The keys to combine with the collection.
 	 * @return static
 	 */
-	public function combine(Traversable|array $keys): static
+	public function combine(array|CollectionInterface $keys): static
 	{
 		$keys = is_array($keys) ? $keys : iterator_to_array($keys);
 		$items = $this->items;

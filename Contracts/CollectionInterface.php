@@ -9,7 +9,6 @@ use Closure;
 use Countable;
 use Inspira\Contracts\Arrayable;
 use IteratorAggregate;
-use Traversable;
 
 /**
  * Interface CollectionInterface
@@ -76,11 +75,11 @@ interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable,
 	/**
 	 * Combine the given keys to the current collection item
 	 *
-	 * @param array|Traversable $keys The keys to use.
+	 * @param array|CollectionInterface $keys The keys to use.
 	 *
 	 * @return static A new collection with the specified keys.
 	 */
-	public function combine(array|Traversable $keys): static;
+	public function combine(array|CollectionInterface $keys): static;
 
 	/**
 	 * Determine if the collection has a given item.
