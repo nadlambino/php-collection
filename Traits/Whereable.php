@@ -28,8 +28,17 @@ trait Whereable
 	public function where(string|Closure $column, mixed $comparison = null, mixed $value = null): static
 	{
 		if (is_string($column)) {
-			$newComparison = func_num_args() === 2 || empty($comparison) ? '=' : $comparison;
-			$value = func_num_args() === 2 ? $comparison : $value;
+			$argsCount = func_num_args();
+			$newComparison = match (true) {
+				$argsCount === 2,
+				empty($comparison) => '=',
+				default => $comparison
+			};
+			$value = match (true) {
+				$argsCount === 1 => $column,
+				$argsCount === 2 => $comparison,
+				default => $value
+			};
 			$column = $this->getFilterCallback($column, $newComparison, $value);
 		}
 
@@ -217,6 +226,9 @@ trait Whereable
 				$actualType === Type::ARRAY->value,
 				$expectedType === Type::ARRAY->value => $item[$column],
 			$item instanceof Arrayable => $item->toArray()[$column],
+
+			// Stringable item type
+			stringable($item) => $item,
 
 			// Unhandled item types
 			default => throw new Error("Cannot find column [$column] in collection item type [$actual].")
