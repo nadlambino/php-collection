@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Inspira\Collection;
 
 use ArrayIterator;
+use Closure;
 use Inspira\Collection\Contracts\CollectionInterface;
 use Inspira\Collection\Enums\Type;
 use Inspira\Collection\Exceptions\ImmutableCollectionException;
@@ -493,5 +494,41 @@ class Collection implements CollectionInterface
 		unset($collection->items[$key]);
 
 		return $collection;
+	}
+
+	/**
+	 * Get the difference of two collections, merge them and return as a new Collection
+	 *
+	 * @param CollectionInterface $collection The collection to compare with.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @return static
+	 */
+	public function diff(CollectionInterface $collection, bool $checkType = true): static
+	{
+		if ($checkType && ($aType = $this->getType()) !== ($bType = $collection->getType())) {
+			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
+			throw new InvalidTypeException("Invalid type encountered during diff. Expecting type [$aType], [$bType] given.");
+		}
+
+		$a = array_udiff($this->items, $collection->toArray(), $this->getComparisonCallback());
+		$b = array_udiff($collection->toArray(), $this->items, $this->getComparisonCallback());
+
+		$collection = clone $this;
+		$collection->items = [...$a, ...$b];
+		$collection->type = TYPE::MIXED;
+
+		return $collection;
+	}
+
+	protected function getComparisonCallback(): Closure
+	{
+		return function (mixed $a, mixed $b): int {
+			if (is_object($a) && is_object($b)) {
+				$a = spl_object_id($a);
+				$b = spl_object_id($b);
+			}
+
+			return $a <=> $b;
+		};
 	}
 }

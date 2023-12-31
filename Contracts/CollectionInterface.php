@@ -20,6 +20,13 @@ use IteratorAggregate;
 interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable, Arrayable, WhereInterface
 {
 	/**
+	 * Get the type of the items that can be stored in the collection.
+	 *
+	 * @return mixed
+	 */
+	public function getType(): mixed;
+
+	/**
 	 * Create a new collection instance.
 	 *
 	 * @param array $data The initial data for the collection.
