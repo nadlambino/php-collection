@@ -509,6 +509,16 @@ class GenericCollection implements CollectionInterface
 	 */
 	public function filter(callable|Closure $callback): static
 	{
-		// TODO: Implement filter() method.
+		$items = array_filter($this->items, $callback);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+
+		return $collection;
 	}
 }
