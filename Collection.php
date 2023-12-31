@@ -520,12 +520,25 @@ class Collection implements CollectionInterface
 		return $collection;
 	}
 
+	/**
+	 * Get the callback for comparing the items of 2 collections.
+	 *
+	 * @return Closure
+	 */
 	protected function getComparisonCallback(): Closure
 	{
 		return function (mixed $a, mixed $b): int {
 			if (is_object($a) && is_object($b)) {
 				$a = spl_object_id($a);
 				$b = spl_object_id($b);
+			}
+
+			if (stringable($a) && stringable($b)) {
+				return $a <=> $b;
+			}
+
+			if (gettype($a) !== gettype($b)) {
+				return -1;
 			}
 
 			return $a <=> $b;
