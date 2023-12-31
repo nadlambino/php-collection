@@ -504,10 +504,10 @@ class GenericCollection implements CollectionInterface
 	 * @param mixed $value The value to compare against.
 	 * @return static
 	 */
-	public function where(string|Closure $column, mixed $comparison, mixed $value = null): static
+	public function where(string|Closure $column, mixed $comparison = null, mixed $value = null): static
 	{
 		if (is_string($column)) {
-			$newComparison = func_num_args() === 2 ? '=' : $comparison;
+			$newComparison = func_num_args() === 2 || empty($comparison) ? '=' : $comparison;
 			$value = func_num_args() === 2 ? $comparison : $value;
 			$column = $this->getFilterCallback($column, $newComparison, $value);
 		}
@@ -515,29 +515,21 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($column);
 	}
 
-	public function orWhere(string|Closure $column, mixed $comparison = null, mixed $value = null): static
-	{
-		// TODO: Implement orWhere() method.
-	}
-
 	public function whereLike(string $column, string $value): static
 	{
-		// TODO: Implement whereLike() method.
+		$comparison = match (true) {
+			str_starts_with($value, '%') && str_ends_with($value, '%') => '%LIKE%',
+			str_starts_with($value, '%') => 'LIKE%',
+			str_ends_with($value, '%') => '%LIKE',
+			default => '%LIKE%'
+		};
+
+		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%')));
 	}
 
 	public function whereNotLike(string $column, string $value): static
 	{
 		// TODO: Implement whereNotLike() method.
-	}
-
-	public function orWhereLike(string $column, string $value): static
-	{
-		// TODO: Implement orWhereLike() method.
-	}
-
-	public function orWhereNotLike(string $column, string $value): static
-	{
-		// TODO: Implement orWhereNotLike() method.
 	}
 
 	public function whereNull(string $column): static
@@ -550,16 +542,6 @@ class GenericCollection implements CollectionInterface
 		// TODO: Implement whereNotNull() method.
 	}
 
-	public function orWhereNull(string $column): static
-	{
-		// TODO: Implement orWhereNull() method.
-	}
-
-	public function orWhereNotNull(string $column): static
-	{
-		// TODO: Implement orWhereNotNull() method.
-	}
-
 	public function whereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
 	{
 		// TODO: Implement whereBetween() method.
@@ -570,16 +552,6 @@ class GenericCollection implements CollectionInterface
 		// TODO: Implement whereNotBetween() method.
 	}
 
-	public function orWhereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
-	{
-		// TODO: Implement orWhereBetween() method.
-	}
-
-	public function orWhereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
-	{
-		// TODO: Implement orWhereNotBetween() method.
-	}
-
 	public function whereIn(string $column, array $values): static
 	{
 		// TODO: Implement whereIn() method.
@@ -588,16 +560,6 @@ class GenericCollection implements CollectionInterface
 	public function whereNotIn(string $column, array $values): static
 	{
 		// TODO: Implement whereNotIn() method.
-	}
-
-	public function orWhereIn(string $column, array $values): static
-	{
-		// TODO: Implement orWhereIn() method.
-	}
-
-	public function orWhereNotIn(string $column, array $values): static
-	{
-		// TODO: Implement orWhereNotIn() method.
 	}
 
 	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
@@ -615,10 +577,10 @@ class GenericCollection implements CollectionInterface
 				'<' => $value < $search,
 				'>=' => $value >= $search,
 				'<=' => $value <= $search,
-				'like' => str_contains((string)$value, (string)$search),
-				'not_like' => !str_contains((string)$value, (string)$search),
-				'starts_with' => str_starts_with((string)$value, (string)$search),
-				'ends_with' => str_ends_with((string)$value, (string)$search),
+				'%LIKE%' => str_contains((string)$value, (string)$search),
+				'NOT_LIKE' => !str_contains((string)$value, (string)$search),
+				'LIKE%' => str_starts_with((string)$value, (string)$search),
+				'%LIKE' => str_ends_with((string)$value, (string)$search),
 				default => false,
 			};
 		};
