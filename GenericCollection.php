@@ -60,7 +60,7 @@ class GenericCollection implements CollectionInterface
 			}
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered at position [$key]. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -75,7 +75,7 @@ class GenericCollection implements CollectionInterface
 	 * @param mixed $expected
 	 * @return array
 	 */
-	protected function getActualAndLiteralTypeAsString(mixed $actual, mixed $expected): array
+	protected function getActualAndExpectedLiteralTypeAsString(mixed $actual, mixed $expected): array
 	{
 		return [json_encode($actual), json_encode($expected)];
 	}
@@ -146,7 +146,7 @@ class GenericCollection implements CollectionInterface
 		$actualType = $this->getItemType($value);
 
 		if ($this->isLiteralType) {
-			[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
+			[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
 			throw new InvalidLiteralTypeException("Invalid item type encountered during __set. Expecting literal [$expectedType], [$actualType] given.");
 		}
 
@@ -404,7 +404,7 @@ class GenericCollection implements CollectionInterface
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during append. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -440,7 +440,7 @@ class GenericCollection implements CollectionInterface
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
