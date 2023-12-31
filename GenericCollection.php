@@ -27,18 +27,19 @@ class GenericCollection implements CollectionInterface
 	/**
 	 * Constructor for GenericCollection.
 	 *
-	 * @param array<string|integer, T>|T[] $items The initial set of items for the collection.
+	 * @param array<string|integer, T>|T[]|CollectionInterface $items The initial set of items for the collection.
 	 * @param T|Type|string|int|float|bool|null $type The expected type of collection items.
 	 * @param bool $isLiteralType Indicates whether the type is literal or not.
 	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
 	public function __construct(
-		protected array                           $items = [],
+		protected array|CollectionInterface       $items = [],
 		protected Type|string|int|float|bool|null $type = Type::MIXED,
 		protected bool                            $isLiteralType = false,
 		protected bool                            $isMutable = false
 	)
 	{
+		$this->items = $items instanceof CollectionInterface ? $items->toArray() : $items;
 		$this->validateType();
 	}
 
