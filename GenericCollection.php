@@ -8,6 +8,7 @@ use ArrayIterator;
 use Closure;
 use Inspira\Collection\Contracts\CollectionInterface;
 use Inspira\Collection\Enums\Type;
+use Inspira\Collection\Exceptions\ImmutableCollectionException;
 use Inspira\Collection\Exceptions\InvalidLiteralTypeException;
 use Inspira\Collection\Exceptions\InvalidTypeException;
 use Inspira\Collection\Exceptions\ItemNotFoundException;
@@ -224,6 +225,10 @@ class GenericCollection implements CollectionInterface
 	 */
 	public function offsetSet(mixed $offset, mixed $value): void
 	{
+		if ($this->isMutable === false) {
+			throw new ImmutableCollectionException("Cannot set an item of an immutable collection.");
+		}
+
 		empty($offset) ? $this->items[] = $value : $this->items[$offset] = $value;
 	}
 
@@ -234,6 +239,10 @@ class GenericCollection implements CollectionInterface
 	 */
 	public function offsetUnset(mixed $offset): void
 	{
+		if ($this->isMutable === false) {
+			throw new ImmutableCollectionException("Cannot unset an item of immutable collection.");
+		}
+
 		unset($this->items[$offset]);
 	}
 
