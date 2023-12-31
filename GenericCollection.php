@@ -515,76 +515,6 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($column);
 	}
 
-	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
-	{
-		return function ($item) use ($column, $comparison, $search) {
-			$value = $this->getItemValue($item, $column);
-			return match ($comparison) {
-				'=',
-				'==' => $value == $search,
-				'===' => $value === $search,
-				'<>',
-				'!=',
-				'!==' => $value !== $search,
-				'>' => $value > $search,
-				'<' => $value < $search,
-				'>=' => $value >= $search,
-				'<=' => $value <= $search,
-				'like' => str_contains((string)$value, (string)$search),
-				'not_like' => !str_contains((string)$value, (string)$search),
-				'starts_with' => str_starts_with((string)$value, (string)$search),
-				'ends_with' => str_ends_with((string)$value, (string)$search),
-				default => false,
-			};
-		};
-	}
-
-	protected function getItemValue(mixed $item, string $column)
-	{
-		$expectedType = $this->getType();
-		$actualType = gettype($item);
-		[$actual] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
-
-		return match (true) {
-			// Object item type
-			is_object($item),
-				$item instanceof ArrayObject,
-				$actualType === Type::OBJECT->value,
-				$expectedType === Type::OBJECT->value => $item->$column,
-
-			// Array item type
-			is_array($item),
-				$item instanceof ArrayAccess,
-				$actualType === Type::ARRAY->value,
-				$expectedType === Type::ARRAY->value => $item[$column],
-			$item instanceof Arrayable => $item->toArray()[$column],
-
-			// Unhandled item types
-			default => throw new Error("Cannot find column [$column] in collection item type [$actual].")
-		};
-	}
-
-	/**
-	 * Filters the collection using a callback function.
-	 *
-	 * @param callable|Closure $callback The callback function to use for filtering.
-	 * @return static
-	 */
-	public function filter(callable|Closure $callback): static
-	{
-		$items = array_filter($this->items, $callback);
-
-		if ($this->isMutable) {
-			$this->items = $items;
-			return $this;
-		}
-
-		$collection = clone $this;
-		$collection->items = $items;
-
-		return $collection;
-	}
-
 	public function orWhere(string|Closure $column, mixed $comparison = null, mixed $value = null): static
 	{
 		// TODO: Implement orWhere() method.
@@ -668,5 +598,75 @@ class GenericCollection implements CollectionInterface
 	public function orWhereNotIn(string $column, array $values): static
 	{
 		// TODO: Implement orWhereNotIn() method.
+	}
+
+	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
+	{
+		return function ($item) use ($column, $comparison, $search) {
+			$value = $this->getItemValue($item, $column);
+			return match ($comparison) {
+				'=',
+				'==' => $value == $search,
+				'===' => $value === $search,
+				'<>',
+				'!=',
+				'!==' => $value !== $search,
+				'>' => $value > $search,
+				'<' => $value < $search,
+				'>=' => $value >= $search,
+				'<=' => $value <= $search,
+				'like' => str_contains((string)$value, (string)$search),
+				'not_like' => !str_contains((string)$value, (string)$search),
+				'starts_with' => str_starts_with((string)$value, (string)$search),
+				'ends_with' => str_ends_with((string)$value, (string)$search),
+				default => false,
+			};
+		};
+	}
+
+	protected function getItemValue(mixed $item, string $column)
+	{
+		$expectedType = $this->getType();
+		$actualType = gettype($item);
+		[$actual] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+
+		return match (true) {
+			// Object item type
+			is_object($item),
+				$item instanceof ArrayObject,
+				$actualType === Type::OBJECT->value,
+				$expectedType === Type::OBJECT->value => $item->$column,
+
+			// Array item type
+			is_array($item),
+				$item instanceof ArrayAccess,
+				$actualType === Type::ARRAY->value,
+				$expectedType === Type::ARRAY->value => $item[$column],
+			$item instanceof Arrayable => $item->toArray()[$column],
+
+			// Unhandled item types
+			default => throw new Error("Cannot find column [$column] in collection item type [$actual].")
+		};
+	}
+
+	/**
+	 * Filters the collection using a callback function.
+	 *
+	 * @param callable|Closure $callback The callback function to use for filtering.
+	 * @return static
+	 */
+	public function filter(callable|Closure $callback): static
+	{
+		$items = array_filter($this->items, $callback);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+
+		return $collection;
 	}
 }
