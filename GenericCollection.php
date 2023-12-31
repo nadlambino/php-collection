@@ -515,7 +515,7 @@ class GenericCollection implements CollectionInterface
 		return $this->filter($column);
 	}
 
-	public function whereLike(string $column, string $value): static
+	public function whereLike(string $column, string $value, bool $strict = false): static
 	{
 		$comparison = match (true) {
 			str_starts_with($value, '%') && str_ends_with($value, '%') => '%LIKE%',
@@ -524,12 +524,19 @@ class GenericCollection implements CollectionInterface
 			default => '%LIKE%'
 		};
 
-		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%')));
+		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%'), $strict));
 	}
 
-	public function whereNotLike(string $column, string $value): static
+	public function whereNotLike(string $column, string $value, bool $strict = false): static
 	{
-		// TODO: Implement whereNotLike() method.
+		$comparison = match (true) {
+			str_starts_with($value, '%') && str_ends_with($value, '%') => '%NOT_LIKE%',
+			str_starts_with($value, '%') => 'NOT_LIKE%',
+			str_ends_with($value, '%') => '%NOT_LIKE',
+			default => '%NOT_LIKE%'
+		};
+
+		return $this->filter($this->getFilterCallback($column, $comparison, trim($value, '%'), $strict));
 	}
 
 	public function whereNull(string $column): static
@@ -562,10 +569,13 @@ class GenericCollection implements CollectionInterface
 		// TODO: Implement whereNotIn() method.
 	}
 
-	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
+	protected function getFilterCallback(string $column, string $comparison, mixed $search, bool $strict = false): Closure
 	{
-		return function ($item) use ($column, $comparison, $search) {
+		return function ($item) use ($column, $comparison, $search, $strict) {
 			$value = $this->getItemValue($item, $column);
+			$value = $strict === false && is_string($value) ? strtolower($value) : $value;
+			$search = $strict === false && is_string($search) ? strtolower($search) : $search;
+
 			return match ($comparison) {
 				'=',
 				'==' => $value == $search,
@@ -578,9 +588,11 @@ class GenericCollection implements CollectionInterface
 				'>=' => $value >= $search,
 				'<=' => $value <= $search,
 				'%LIKE%' => str_contains((string)$value, (string)$search),
-				'NOT_LIKE' => !str_contains((string)$value, (string)$search),
 				'LIKE%' => str_starts_with((string)$value, (string)$search),
 				'%LIKE' => str_ends_with((string)$value, (string)$search),
+				'%NOT_LIKE%' => !str_contains((string)$value, (string)$search),
+				'NOT_LIKE%' => !str_starts_with((string)$value, (string)$search),
+				'%NOT_LIKE' => !str_ends_with((string)$value, (string)$search),
 				default => false,
 			};
 		};
