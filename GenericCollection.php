@@ -541,37 +541,37 @@ class GenericCollection implements CollectionInterface
 
 	public function whereNull(string $column): static
 	{
-		// TODO: Implement whereNull() method.
+		return $this->filter($this->getFilterCallback($column, '=', null));
 	}
 
 	public function whereNotNull(string $column): static
 	{
-		// TODO: Implement whereNotNull() method.
+		return $this->filter($this->getFilterCallback($column, '!=', null));
 	}
 
 	public function whereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
 	{
-		// TODO: Implement whereBetween() method.
+		return $this->filter($this->getFilterCallback($column, 'BETWEEN', [$lowerBound, $upperBound]));
 	}
 
 	public function whereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
 	{
-		// TODO: Implement whereNotBetween() method.
+		return $this->filter($this->getFilterCallback($column, 'NOT_BETWEEN', [$lowerBound, $upperBound]));
 	}
 
 	public function whereIn(string $column, array $values): static
 	{
-		// TODO: Implement whereIn() method.
+		return $this->filter($this->getFilterCallback($column, 'IN', $values));
 	}
 
 	public function whereNotIn(string $column, array $values): static
 	{
-		// TODO: Implement whereNotIn() method.
+		return $this->filter($this->getFilterCallback($column, 'NOT_IN', $values));
 	}
 
 	protected function getFilterCallback(string $column, string $comparison, mixed $search, bool $strict = false): Closure
 	{
-		return function ($item) use ($column, $comparison, $search, $strict) {
+		return function ($item) use ($column, $comparison, $search, $strict): bool {
 			$value = $this->getItemValue($item, $column);
 			$value = $strict === false && is_string($value) ? strtolower($value) : $value;
 			$search = $strict === false && is_string($search) ? strtolower($search) : $search;
@@ -587,6 +587,10 @@ class GenericCollection implements CollectionInterface
 				'<' => $value < $search,
 				'>=' => $value >= $search,
 				'<=' => $value <= $search,
+				'BETWEEN' => $value >= $search[0] ?? null && $value <= $search[1] ?? null,
+				'NOT_BETWEEN' => $value < $search[0] ?? null && $value > $search[1] ?? null,
+				'IN' => in_array($value, $search),
+				'NOT_IN' => !in_array($value, $search),
 				'%LIKE%' => str_contains((string)$value, (string)$search),
 				'LIKE%' => str_starts_with((string)$value, (string)$search),
 				'%LIKE' => str_ends_with((string)$value, (string)$search),
