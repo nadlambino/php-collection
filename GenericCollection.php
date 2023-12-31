@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Inspira\Collection;
 
+use ArrayAccess;
 use ArrayIterator;
+use ArrayObject;
 use Closure;
+use Error;
 use Inspira\Collection\Contracts\CollectionInterface;
 use Inspira\Collection\Enums\Type;
 use Inspira\Collection\Exceptions\ImmutableCollectionException;
 use Inspira\Collection\Exceptions\InvalidLiteralTypeException;
 use Inspira\Collection\Exceptions\InvalidTypeException;
 use Inspira\Collection\Exceptions\ItemNotFoundException;
+use Inspira\Contracts\Arrayable;
 use Traversable;
 
 /**
@@ -61,7 +65,7 @@ class GenericCollection implements CollectionInterface
 			}
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered at position [$key]. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -76,9 +80,13 @@ class GenericCollection implements CollectionInterface
 	 * @param mixed $expected
 	 * @return array
 	 */
-	protected function getActualAndExpectedLiteralTypeAsString(mixed $actual, mixed $expected): array
+	protected function getActualAndExpectedTypeAsString(mixed $actual, mixed $expected): array
 	{
-		return [json_encode($actual), json_encode($expected)];
+		if ($this->isLiteralType) {
+			return [json_encode($actual), json_encode($expected)];
+		}
+
+		return [$actual, $expected];
 	}
 
 	/**
@@ -147,7 +155,7 @@ class GenericCollection implements CollectionInterface
 		$actualType = $this->getItemType($value);
 
 		if ($this->isLiteralType) {
-			[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
+			[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
 			throw new InvalidLiteralTypeException("Invalid item type encountered during __set. Expecting literal [$expectedType], [$actualType] given.");
 		}
 
@@ -413,7 +421,7 @@ class GenericCollection implements CollectionInterface
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during append. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -449,7 +457,7 @@ class GenericCollection implements CollectionInterface
 			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
 			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedLiteralTypeAsString($actualType, $expectedType);
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
 				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
 			}
 
@@ -496,9 +504,60 @@ class GenericCollection implements CollectionInterface
 	 * @param mixed $value The value to compare against.
 	 * @return static
 	 */
-	public function where(string $column, mixed $comparison, mixed $value): static
+	public function where(string $column, mixed $comparison, mixed $value = null): static
 	{
-		// TODO: Implement where() method.
+		$newComparison = func_num_args() === 2 ? '=' : $comparison;
+		$value = func_num_args() === 2 ? $comparison : $value;
+
+		return $this->filter($this->getFilterCallback($column, $newComparison, $value));
+	}
+
+	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
+	{
+		return function ($item) use ($column, $comparison, $search) {
+			$value = $this->getItemValue($item, $column);
+			return match ($comparison) {
+				'=',
+				'==' => $search == $value,
+				'===' => $search === $value,
+				'<>',
+				'!=' => $search != $value,
+				'>' => $search > $value,
+				'<' => $search < $value,
+				'>=' => $search >= $value,
+				'<=' => $search <= $value,
+				'like' => str_contains($search, $value),
+				'not_like' => !str_contains($search, $value),
+				'starts_with' => str_starts_with($search, $value),
+				'ends_with' => str_ends_with($search, $value),
+				default => false,
+			};
+		};
+	}
+
+	protected function getItemValue(mixed $item, string $column)
+	{
+		$expectedType = $this->getType();
+		$actualType = gettype($item);
+		[$actual] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+
+		return match (true) {
+			// Object item type
+			is_object($item),
+			$item instanceof ArrayObject,
+			$actualType === Type::OBJECT->value,
+			$expectedType === Type::OBJECT->value => $item->$column,
+
+			// Array item type
+			is_array($item),
+			$item instanceof ArrayAccess,
+			$actualType === Type::ARRAY->value,
+			$expectedType === Type::ARRAY->value => $item[$column],
+			$item instanceof Arrayable => $item->toArray()[$column],
+
+			// Unhandled item types
+			default => throw new Error("Cannot find column [$column] in collection item type [$actual].")
+		};
 	}
 
 	/**
