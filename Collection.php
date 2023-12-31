@@ -4,352 +4,494 @@ declare(strict_types=1);
 
 namespace Inspira\Collection;
 
-use ArrayObject;
-use Inspira\Collection\Enums\Filter;
-use Inspira\Collection\Exceptions\CollectionItemNotFoundException;
-use Inspira\Collection\Exceptions\CollectionNotAccessibleException;
-use Inspira\Contracts\Arrayable;
-use OutOfBoundsException;
-use PHPUnit\Exception;
-use ReturnTypeWillChange;
+use ArrayIterator;
+use Inspira\Collection\Contracts\CollectionInterface;
+use Inspira\Collection\Enums\Type;
+use Inspira\Collection\Exceptions\ImmutableCollectionException;
+use Inspira\Collection\Exceptions\InvalidLiteralTypeException;
+use Inspira\Collection\Exceptions\InvalidTypeException;
+use Inspira\Collection\Exceptions\ItemNotFoundException;
+use Inspira\Collection\Traits\Whereable;
 use Traversable;
 
 /**
- * Class Collection
+ * Collection class represents a collection of items with specified types.
  *
- * Represents a collection of items with various utility methods for manipulation and filtering.
- *
+ * @template T The type of collection item.
  * @package Inspira\Collection
  */
-class Collection extends ArrayObject implements Arrayable
+class Collection implements CollectionInterface
 {
+	use Whereable;
+
 	/**
-	 * Collection constructor.
+	 * Constructor for Collection.
 	 *
-	 * @param array|object $array The initial data for the collection.
-	 * @param int $flags Flags controlling the behavior of the ArrayObject.
-	 * @param string $iteratorClass The name of the iterator class to use.
+	 * @param array<string|integer, T>|T[]|CollectionInterface $items The initial set of items for the collection.
+	 * @param T|Type|string|int|float|bool|null $type The expected type of collection items.
+	 * @param bool $isLiteralType Indicates whether the type is literal or not.
+	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
-	public function __construct(object|array $array = [], int $flags = 0, string $iteratorClass = "ArrayIterator")
+	public function __construct(
+		protected array|CollectionInterface       $items = [],
+		protected Type|string|int|float|bool|null $type = Type::MIXED,
+		protected bool                            $isLiteralType = false,
+		protected bool                            $isMutable = false
+	)
 	{
-		parent::__construct($array, $flags, $iteratorClass);
+		$this->items = $items instanceof CollectionInterface ? $items->toArray() : $items;
+		$this->validateType();
 	}
 
 	/**
-	 * Create a new collection instance.
+	 * Validates the type of each item in the collection against the expected type.
 	 *
-	 * @param array|object $data The initial data for the collection.
-	 *
-	 * @return static The new collection instance.
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
 	 */
-	public static function make(array|object $data): static
+	protected function validateType()
+	{
+		$expectedType = $this->getType();
+		if ($this->isEmpty()) {
+			return;
+		}
+
+		foreach ($this->items as $key => $item) {
+			$actualType = $this->getItemType($item);
+
+			if ($this->isValidType($item)) {
+				continue;
+			}
+
+			if ($this->isLiteralType) {
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+				throw new InvalidLiteralTypeException("Invalid item type encountered at position [$key]. Expecting literal [$expectedType], [$actualType] given.");
+			}
+
+			throw new InvalidTypeException("Invalid item type encountered at position [$key]. Expecting type [$expectedType], [$actualType] given.");
+		}
+	}
+
+	/**
+	 * Get a string representation of actual and expected literal type
+	 *
+	 * @param mixed $actual
+	 * @param mixed $expected
+	 * @return array
+	 */
+	protected function getActualAndExpectedTypeAsString(mixed $actual, mixed $expected): array
+	{
+		if ($this->isLiteralType) {
+			return [json_encode($actual), json_encode($expected)];
+		}
+
+		return [$actual, $expected];
+	}
+
+	/**
+	 * Checks if the given item is of a valid type.
+	 *
+	 * @param mixed $item The item to check.
+	 * @return bool
+	 */
+	protected function isValidType(mixed $item): bool
+	{
+		$actualType = $this->getItemType($item);
+		$expectedType = $this->getType();
+
+		return $expectedType === '' || $expectedType === Type::MIXED->value || $expectedType === $actualType;
+	}
+
+	/**
+	 * Gets the type of the given item.
+	 *
+	 * @param mixed $item The item to get the type of.
+	 * @return mixed
+	 */
+	protected function getItemType(mixed $item): mixed
+	{
+		if ($this->isLiteralType) {
+			return $item;
+		}
+
+		return is_object($item) ? get_class($item) : gettype($item);
+	}
+
+	/**
+	 * Gets the type of the collection.
+	 *
+	 * @return mixed
+	 */
+	public function getType(): mixed
+	{
+		return $this->type instanceof Type ? $this->type->value : $this->type;
+	}
+
+	/**
+	 * Magic method to get the item from the collection or throw an exception if it does not exist.
+	 *
+	 * @param string $name The name of the collection item.
+	 * @return T|mixed
+	 * @throws ItemNotFoundException
+	 */
+	public function __get(string $name): mixed
+	{
+		if (isset($this->items[$name])) {
+			return $this->items[$name];
+		}
+
+		throw new ItemNotFoundException("Item [$name] does not exist in the collection.");
+	}
+
+	public function __set(string $name, $value): void
+	{
+		if ($this->isValidType($value)) {
+			$this->items[$name] = $value;
+			return;
+		}
+
+		$expectedType = $this->getType();
+		$actualType = $this->getItemType($value);
+
+		if ($this->isLiteralType) {
+			[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+			throw new InvalidLiteralTypeException("Invalid item type encountered during __set. Expecting literal [$expectedType], [$actualType] given.");
+		}
+
+		throw new InvalidTypeException("Invalid item type encountered during __set. Expecting type [$expectedType], [$actualType] given.");
+	}
+
+	/**
+	 * Serializes the collection to an array.
+	 *
+	 * @return array
+	 */
+	public function __serialize(): array
+	{
+		return $this->items;
+	}
+
+	/**
+	 * Unserializes the collection from an array.
+	 *
+	 * @param array $data The data to unserialize.
+	 */
+	public function __unserialize(array $data): void
+	{
+		$this->items = $data;
+	}
+
+	/**
+	 * Converts the collection to an array.
+	 *
+	 * @return array
+	 */
+	public function toArray(): array
+	{
+		return $this->items;
+	}
+
+	/**
+	 * Gets the count of items in the collection.
+	 *
+	 * @return int
+	 */
+	public function count(): int
+	{
+		return count($this->items);
+	}
+
+	/**
+	 * Checks if an offset exists in the collection.
+	 *
+	 * @param mixed $offset The offset to check.
+	 * @return bool
+	 */
+	public function offsetExists(mixed $offset): bool
+	{
+		return isset($this->items[$offset]);
+	}
+
+	/**
+	 * Gets the item at the specified offset.
+	 *
+	 * @param mixed $offset The offset to retrieve.
+	 * @return mixed|T
+	 */
+	public function offsetGet(mixed $offset): mixed
+	{
+		return $this->items[$offset] ?? null;
+	}
+
+	/**
+	 * Sets the value at the specified offset.
+	 * If offset is empty, push the value to items.
+	 *
+	 * @param mixed $offset The offset to set.
+	 * @param mixed $value The value to set.
+	 */
+	public function offsetSet(mixed $offset, mixed $value): void
+	{
+		if ($this->isMutable === false) {
+			throw new ImmutableCollectionException("Cannot set an item of an immutable collection.");
+		}
+
+		empty($offset) ? $this->items[] = $value : $this->items[$offset] = $value;
+	}
+
+	/**
+	 * Unsets the item at the specified offset.
+	 *
+	 * @param mixed $offset The offset to unset.
+	 */
+	public function offsetUnset(mixed $offset): void
+	{
+		if ($this->isMutable === false) {
+			throw new ImmutableCollectionException("Cannot unset an item of immutable collection.");
+		}
+
+		unset($this->items[$offset]);
+	}
+
+	/**
+	 * Gets an iterator for the collection.
+	 *
+	 * @return Traversable
+	 */
+	public function getIterator(): Traversable
+	{
+		return new ArrayIterator($this->items);
+	}
+
+	/**
+	 * Checks if the collection is empty.
+	 *
+	 * @return bool
+	 */
+	public function isEmpty(): bool
+	{
+		return $this->count() === 0;
+	}
+
+	/**
+	 * Gets the first item in the collection or null if the collection is empty.
+	 *
+	 * @return T|mixed|null
+	 */
+	public function first(): mixed
+	{
+		return reset($this->items) ?: null;
+	}
+
+	/**
+	 * Creates a new Collection instance from the given array.
+	 *
+	 * @param array $data The array to create the collection from.
+	 * @return static
+	 */
+	public static function make(array $data): static
 	{
 		return new static($data);
 	}
 
 	/**
-	 * Get the first item in the collection.
+	 * Gets the last item in the collection or null if the collection is empty.
 	 *
-	 * @return mixed The first item.
-	 */
-	public function first(): mixed
-	{
-		return $this->index(0, false);
-	}
-
-	/**
-	 * Get the last item in the collection.
-	 *
-	 * @return mixed The last item.
+	 * @return T|mixed|null
 	 */
 	public function last(): mixed
 	{
-		return $this->index($this->getIterator()->count() - 1, false);
+		return end($this->items) ?: null;
 	}
 
 	/**
-	 * Get an item at a specific index.
+	 * Gets the item at the specified index in the collection.
 	 *
-	 * @param int $index The index of the item.
-	 * @param bool $strict Whether to throw an exception if the index is out of bounds.
-	 *
-	 * @return mixed|null The item at the specified index.
-	 * @throws OutOfBoundsException If the index is out of bounds and strict mode is enabled.
+	 * @param int $index The index to retrieve.
+	 * @param bool $strict Indicates whether to throw an exception if the index does not exist.
+	 * @return T|mixed
+	 * @throws ItemNotFoundException
 	 */
-	public function index(int $index, bool $strict = true): mixed
+	public function index(int $index, bool $strict = false): mixed
 	{
-		$items = $this->getIterator();
-		$count = $items->count();
-
-		if ($count === 0 && $strict === true) {
-			throw new OutOfBoundsException("Can not access an item of an empty collection");
+		if (!$this->offsetExists($index) && $strict === true) {
+			throw new ItemNotFoundException("Item at position [$index] does not exist in the collection.");
 		}
 
-		if ($count === 0) {
-			return null;
-		}
-
-		try {
-			$items->seek($index);
-			$item = $items->current();
-		} catch (Exception) {
-			throw new OutOfBoundsException("Can not access an item from non-existing index.");
-		}
-
-		return $this->isTraversable($item) ? new static($item) : $item;
+		return $this->offsetGet($index);
 	}
 
 	/**
-	 * Get the values of a given column.
+	 * Extracts a column from the items in the collection.
 	 *
-	 * @param string $name The name of the column.
-	 * @param ?string $key The name of the key column.
-	 *
-	 * @return static A new collection with the values of the specified column.
+	 * @param int|string $column The column to extract.
+	 * @param ?string $key The key to use as the index for the returned array.
+	 * @return static
 	 */
-	public function column(string $name, string $key = null): static
+	public function column(string|int $column, string $key = null): static
 	{
-		return new static(array_column($this->toArray(), $name, $key));
+		$items = array_column($this->items, $column, $key);
+
+		return new static($items);
 	}
 
 	/**
-	 * Chunk the collection into smaller chunks.
+	 * Chunks the collection into smaller collections.
 	 *
 	 * @param int $length The size of each chunk.
 	 * @param bool $preserveKeys Whether to preserve the keys of the original collection.
-	 *
-	 * @return static A new collection with the chunked data.
+	 * @return static
 	 */
 	public function chunk(int $length, bool $preserveKeys = false): static
 	{
-		return new static(array_chunk($this->toArray(), $length, $preserveKeys));
+		$items = array_chunk($this->items, $length, $preserveKeys);
+
+		return new static($items, Type::ARRAY);
 	}
 
 	/**
-	 * Add keys to the collection using the given keys.
+	 * Combines the collection with the keys provided.
 	 *
-	 * @param array|Traversable $keys The keys to use.
-	 *
-	 * @return static A new collection with the specified keys.
+	 * @param Traversable|array $keys The keys to combine with the collection.
+	 * @return static
 	 */
-	public function withKeys(array|Traversable $keys): static
+	public function combine(Traversable|array $keys): static
 	{
 		$keys = is_array($keys) ? $keys : iterator_to_array($keys);
+		$items = $this->items;
+		$items = array_combine($keys, $items);
 
-		return new static(array_combine($keys, $this->toArray()));
+		if ($this->isMutable) {
+			$this->items = $items;
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+
+		/** @var static */
+		return $collection;
 	}
 
 	/**
-	 * Determine if the collection has a given item.
+	 * Checks if the collection contains a given item.
 	 *
-	 * @param array|Traversable $item The item to search for.
-	 *
-	 * @return bool True if the collection has the specified item, false otherwise.
+	 * @param T|mixed $item The item to check for.
+	 * @return bool
 	 */
-	public function has(array|Traversable $item): bool
+	public function has(mixed $item): bool
 	{
-		$item = is_array($item) ? $item : iterator_to_array($item);
-
-		return in_array($item, $this->toArray());
+		return in_array($item, $this->items);
 	}
 
 	/**
-	 * Get the keys of the collection items.
+	 * Gets a collection of the keys in the current collection.
 	 *
-	 * @return static A new collection with the keys of the original collection.
+	 * @return static
 	 */
 	public function keys(): static
 	{
-		return new static(array_keys($this->toArray()));
+		return new static(array_keys($this->items));
 	}
 
 	/**
-	 * Get the values of the collection items.
+	 * Gets a collection of the values in the current collection.
 	 *
-	 * @return static A new collection with the values of the original collection.
+	 * @return static
 	 */
 	public function values(): static
 	{
-		return new static(array_values($this->toArray()));
+		return new static(array_values($this->items));
 	}
 
 	/**
-	 * Append a value to the end of the collection.
+	 * Appends an item to the collection.
 	 *
-	 * @param mixed $value The value to append.
-	 *
-	 * @return static The modified collection.
+	 * @param T|mixed $item The item to append.
+	 * @return static
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
 	 */
-	#[ReturnTypeWillChange]
-	public function append(mixed $value): static
+	public function append(mixed $item): static
 	{
-		parent::append($value);
+		$expectedType = $this->getType();
+		if (!$this->isValidType($item)) {
+			$actualType = $this->getItemType($item);
+			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
-		return $this;
+			if ($this->isLiteralType) {
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+				throw new InvalidLiteralTypeException("Invalid item type encountered during append. Expecting literal [$expectedType], [$actualType] given.");
+			}
+
+			throw new InvalidTypeException("Invalid item type encountered during append. Expecting type [$expectedType], [$actualType] given.");
+		}
+
+		if ($this->isMutable) {
+			$this->offsetSet(null, $item);
+
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items[] = $item;
+
+		/** @var static */
+		return $collection;
 	}
 
 	/**
-	 * Prepend a value to the beginning of the collection.
+	 * Prepends an item to the collection.
 	 *
-	 * @param mixed $value The value to prepend.
-	 *
-	 * @return static A new collection with the prepended value.
+	 * @param T|mixed $item The item to prepend.
+	 * @return static
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
 	 */
-	public function prepend(mixed $value): static
+	public function prepend(mixed $item): static
 	{
-		$items = $this->toArray();
-		array_unshift($items, $value);
+		$expectedType = $this->getType();
+		if (!$this->isValidType($item)) {
+			$actualType = $this->getItemType($item);
+			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
 
-		return new static($items);
+			if ($this->isLiteralType) {
+				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
+			}
+
+			throw new InvalidTypeException("Invalid item type encountered during prepend. Expecting type [$expectedType], [$actualType] given.");
+		}
+
+		if ($this->isMutable) {
+			array_unshift($this->items, $item);
+
+			return $this;
+		}
+
+		$collection = clone $this;
+		array_unshift($collection->items, $item);
+
+		return $collection;
 	}
 
 	/**
-	 * Remove an item from the collection by key.
+	 * Removes the item at the specified key from the collection.
 	 *
-	 * @param int|string $key The key of the item to remove.
-	 *
-	 * @return static A new collection with the specified item removed.
+	 * @param int|string $key The key to unset.
+	 * @return static
 	 */
 	public function unset(int|string $key): static
 	{
-		$items = $this->toArray();
-		unset($items[$key]);
+		if ($this->isMutable) {
+			$this->offsetUnset($key);
 
-		return new static($items);
-	}
-
-	/**
-	 * Filter the collection items based on the given filters.
-	 *
-	 * @param mixed $filters The filters to apply.
-	 * @param bool $strict Whether to perform a strict comparison.
-	 *
-	 * @return static A new collection with the filtered items.
-	 */
-	public function where(mixed $filters, bool $strict = true): static
-	{
-		return $this->filter($filters, $strict, Filter::WHERE);
-	}
-
-	/**
-	 * Filter the collection items based on the given filters using a "like" comparison.
-	 *
-	 * @param mixed $filters The filters to apply.
-	 * @param bool $strict Whether to perform a strict comparison.
-	 *
-	 * @return static A new collection with the filtered items.
-	 */
-	public function like(mixed $filters, bool $strict = false): static
-	{
-		return $this->filter($filters, $strict, Filter::LIKE);
-	}
-
-	/**
-	 * Convert the collection to a plain PHP array.
-	 *
-	 * @return array The plain PHP array representation of the collection.
-	 */
-	public function toArray(): array
-	{
-		return iterator_to_array($this);
-	}
-
-	/**
-	 * Dynamically retrieve the value of an item in the collection.
-	 *
-	 * @param string $name The name of the item.
-	 *
-	 * @return mixed The value of the specified item.
-	 * @throws CollectionItemNotFoundException If the item is not found in the collection.
-	 * @throws CollectionNotAccessibleException If the collection is not accessible.
-	 */
-	public function __get(string $name): mixed
-	{
-		if (!$this->isTraversable($this)) {
-			throw new CollectionNotAccessibleException('Collection item is not an instance of ArrayObject');
+			return $this;
 		}
 
-		if (!isset($this[$name])) {
-			throw new CollectionItemNotFoundException(sprintf('Property [%s] does not exist in the collection', $name));
-		}
+		$collection = clone $this;
+		unset($collection->items[$key]);
 
-		return $this[$name];
-	}
-
-	/**
-	 * Check if a value is traversable (array, object, or Traversable).
-	 *
-	 * @param mixed $data The value to check.
-	 *
-	 * @return bool True if the value is traversable, false otherwise.
-	 */
-	private function isTraversable(mixed $data): bool
-	{
-		return is_array($data) || is_object($data) || $data instanceof Traversable;
-	}
-
-	/**
-	 * Apply filtering to the collection based on the given filters.
-	 *
-	 * @param mixed $filters The filters to apply.
-	 * @param bool $strict Whether to perform a strict comparison.
-	 * @param Filter $type The type of filtering to apply.
-	 *
-	 * @return static A new collection with the filtered items.
-	 */
-	private function filter(mixed $filters, bool $strict, Filter $type): static
-	{
-		$filters = $filters instanceof Traversable ? iterator_to_array($filters) : $filters;
-
-		$result = array_filter($this->toArray(), function ($item) use ($filters, $strict, $type) {
-			// Check if collection item is a stringable value and the filter is not an array
-			if (stringable($item) && !is_array($filters)) {
-				$itemValue = $strict === false ? strtolower((string)$item) : $item;
-				$filterValue = $strict === false ? strtolower((string)$filters) : $filters;
-
-				return match (true) {
-					$type === Filter::LIKE => str_contains($itemValue, $filterValue),
-					$strict === true => $itemValue === $filterValue,
-					$strict === false => $itemValue == $filterValue,
-					default => false
-				};
-			}
-
-			// Check if collection item is not a stringable and filters is not an array
-			// Or collection item is not an array
-			// Or filters is not an associative array
-			if (
-				(!is_array($filters) && !stringable($item)) ||
-				!is_array($item) ||
-				is_int((new static(array_keys($filters)))->first())
-			) {
-				return false;
-			}
-
-			foreach ($filters as $key => $value) {
-				if (!isset($item[$key])) {
-					return false;
-				}
-
-				$itemValue = $strict === false ? strtolower((string)$item[$key]) : $item[$key];
-				$filterValue = $strict === false ? strtolower((string)$value) : $value;
-
-				if ($type === Filter::LIKE && !str_contains($itemValue, $filterValue)) {
-					return false;
-				}
-
-				if ($type === Filter::WHERE) {
-					return match (true) {
-						$strict === true && $itemValue !== $filterValue,
-						$strict === false && $itemValue != $filterValue => false,
-						default => true
-					};
-				}
-			}
-
-			return true;
-		});
-
-		return new static($result);
+		return $collection;
 	}
 }
