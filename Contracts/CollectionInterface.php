@@ -18,7 +18,7 @@ use Traversable;
  *
  * @package Inspira\Collection
  */
-interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable, Arrayable
+interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable, Arrayable, WhereInterface
 {
 	/**
 	 * Create a new collection instance.
@@ -131,16 +131,6 @@ interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable,
 	 * @return static A new collection with the specified item removed.
 	 */
 	public function unset(int|string $key): static;
-
-	/**
-	 * Filter the collection items based on the given filters.
-	 *
-	 * @param string $column The column to search by.
-	 * @param mixed $comparison The comparison operator to apply.
-	 * @param mixed $value The value to search for.
-	 * @return static A new collection with the filtered items.
-	 */
-	public function where(string $column, mixed $comparison, mixed $value): static;
 
 	/**
 	 * Filter the collection items based on the given callback.

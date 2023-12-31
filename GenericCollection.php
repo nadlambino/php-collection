@@ -499,17 +499,20 @@ class GenericCollection implements CollectionInterface
 	/**
 	 * Filters the collection based on a given condition.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|Closure $column The column to filter on.
 	 * @param mixed $comparison The comparison value.
 	 * @param mixed $value The value to compare against.
 	 * @return static
 	 */
-	public function where(string $column, mixed $comparison, mixed $value = null): static
+	public function where(string|Closure $column, mixed $comparison, mixed $value = null): static
 	{
-		$newComparison = func_num_args() === 2 ? '=' : $comparison;
-		$value = func_num_args() === 2 ? $comparison : $value;
+		if (is_string($column)) {
+			$newComparison = func_num_args() === 2 ? '=' : $comparison;
+			$value = func_num_args() === 2 ? $comparison : $value;
+			$column = $this->getFilterCallback($column, $newComparison, $value);
+		}
 
-		return $this->filter($this->getFilterCallback($column, $newComparison, $value));
+		return $this->filter($column);
 	}
 
 	protected function getFilterCallback(string $column, string $comparison, mixed $search): Closure
@@ -518,18 +521,19 @@ class GenericCollection implements CollectionInterface
 			$value = $this->getItemValue($item, $column);
 			return match ($comparison) {
 				'=',
-				'==' => $search == $value,
-				'===' => $search === $value,
+				'==' => $value == $search,
+				'===' => $value === $search,
 				'<>',
-				'!=' => $search != $value,
-				'>' => $search > $value,
-				'<' => $search < $value,
-				'>=' => $search >= $value,
-				'<=' => $search <= $value,
-				'like' => str_contains($search, $value),
-				'not_like' => !str_contains($search, $value),
-				'starts_with' => str_starts_with($search, $value),
-				'ends_with' => str_ends_with($search, $value),
+				'!=',
+				'!==' => $value !== $search,
+				'>' => $value > $search,
+				'<' => $value < $search,
+				'>=' => $value >= $search,
+				'<=' => $value <= $search,
+				'like' => str_contains((string)$value, (string)$search),
+				'not_like' => !str_contains((string)$value, (string)$search),
+				'starts_with' => str_starts_with((string)$value, (string)$search),
+				'ends_with' => str_ends_with((string)$value, (string)$search),
 				default => false,
 			};
 		};
@@ -544,15 +548,15 @@ class GenericCollection implements CollectionInterface
 		return match (true) {
 			// Object item type
 			is_object($item),
-			$item instanceof ArrayObject,
-			$actualType === Type::OBJECT->value,
-			$expectedType === Type::OBJECT->value => $item->$column,
+				$item instanceof ArrayObject,
+				$actualType === Type::OBJECT->value,
+				$expectedType === Type::OBJECT->value => $item->$column,
 
 			// Array item type
 			is_array($item),
-			$item instanceof ArrayAccess,
-			$actualType === Type::ARRAY->value,
-			$expectedType === Type::ARRAY->value => $item[$column],
+				$item instanceof ArrayAccess,
+				$actualType === Type::ARRAY->value,
+				$expectedType === Type::ARRAY->value => $item[$column],
 			$item instanceof Arrayable => $item->toArray()[$column],
 
 			// Unhandled item types
@@ -579,5 +583,90 @@ class GenericCollection implements CollectionInterface
 		$collection->items = $items;
 
 		return $collection;
+	}
+
+	public function orWhere(string|Closure $column, mixed $comparison = null, mixed $value = null): static
+	{
+		// TODO: Implement orWhere() method.
+	}
+
+	public function whereLike(string $column, string $value): static
+	{
+		// TODO: Implement whereLike() method.
+	}
+
+	public function whereNotLike(string $column, string $value): static
+	{
+		// TODO: Implement whereNotLike() method.
+	}
+
+	public function orWhereLike(string $column, string $value): static
+	{
+		// TODO: Implement orWhereLike() method.
+	}
+
+	public function orWhereNotLike(string $column, string $value): static
+	{
+		// TODO: Implement orWhereNotLike() method.
+	}
+
+	public function whereNull(string $column): static
+	{
+		// TODO: Implement whereNull() method.
+	}
+
+	public function whereNotNull(string $column): static
+	{
+		// TODO: Implement whereNotNull() method.
+	}
+
+	public function orWhereNull(string $column): static
+	{
+		// TODO: Implement orWhereNull() method.
+	}
+
+	public function orWhereNotNull(string $column): static
+	{
+		// TODO: Implement orWhereNotNull() method.
+	}
+
+	public function whereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	{
+		// TODO: Implement whereBetween() method.
+	}
+
+	public function whereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	{
+		// TODO: Implement whereNotBetween() method.
+	}
+
+	public function orWhereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	{
+		// TODO: Implement orWhereBetween() method.
+	}
+
+	public function orWhereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	{
+		// TODO: Implement orWhereNotBetween() method.
+	}
+
+	public function whereIn(string $column, array $values): static
+	{
+		// TODO: Implement whereIn() method.
+	}
+
+	public function whereNotIn(string $column, array $values): static
+	{
+		// TODO: Implement whereNotIn() method.
+	}
+
+	public function orWhereIn(string $column, array $values): static
+	{
+		// TODO: Implement orWhereIn() method.
+	}
+
+	public function orWhereNotIn(string $column, array $values): static
+	{
+		// TODO: Implement orWhereNotIn() method.
 	}
 }
