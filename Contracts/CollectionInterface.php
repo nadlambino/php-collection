@@ -27,15 +27,6 @@ interface CollectionInterface extends IteratorAggregate, ArrayAccess, Countable,
 	public function getType(): mixed;
 
 	/**
-	 * Create a new collection instance.
-	 *
-	 * @param array $data The initial data for the collection.
-	 *
-	 * @return static The new collection instance.
-	 */
-	public static function make(array $data): static;
-
-	/**
 	 * Get the first item in the collection.
 	 *
 	 * @return mixed The first item.

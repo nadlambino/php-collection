@@ -18,7 +18,7 @@ use Traversable;
 /**
  * Collection class represents a collection of items with specified types.
  *
- * @template T The type of collection item.
+ * @template Item The type of collection item.
  * @package Inspira\Collection
  */
 class Collection implements CollectionInterface
@@ -28,8 +28,8 @@ class Collection implements CollectionInterface
 	/**
 	 * Constructor for Collection.
 	 *
-	 * @param array<string|integer, T>|T[]|CollectionInterface $items The initial set of items for the collection.
-	 * @param T|Type|string|int|float|bool|null $type The expected type of collection items.
+	 * @param array|Item[]|CollectionInterface $items The initial set of items for the collection.
+	 * @param class-string<Item>|Item|Type|string|int|float|bool|null|false $type The expected type of collection items.
 	 * @param bool $isLiteralType Indicates whether the type is literal or not.
 	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
@@ -92,7 +92,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Checks if the given item is of a valid type.
 	 *
-	 * @param mixed $item The item to check.
+	 * @param Item $item The item to check.
 	 * @return bool
 	 */
 	protected function isValidType(mixed $item): bool
@@ -106,7 +106,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Gets the type of the given item.
 	 *
-	 * @param mixed $item The item to get the type of.
+	 * @param Item $item The item to get the type of.
 	 * @return mixed
 	 */
 	protected function getItemType(mixed $item): mixed
@@ -132,7 +132,7 @@ class Collection implements CollectionInterface
 	 * Magic method to get the item from the collection or throw an exception if it does not exist.
 	 *
 	 * @param string $name The name of the collection item.
-	 * @return T|mixed
+	 * @return ?Item
 	 * @throws ItemNotFoundException
 	 */
 	public function __get(string $name): mixed
@@ -144,7 +144,12 @@ class Collection implements CollectionInterface
 		throw new ItemNotFoundException("Item [$name] does not exist in the collection.");
 	}
 
-	public function __set(string $name, $value): void
+	/**
+	 * @param string $name
+	 * @param Item $value
+	 * @return void
+	 */
+	public function __set(string $name, mixed $value): void
 	{
 		if ($this->isValidType($value)) {
 			$this->items[$name] = $value;
@@ -185,7 +190,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Converts the collection to an array.
 	 *
-	 * @return array
+	 * @return Item[]
 	 */
 	public function toArray(): array
 	{
@@ -217,7 +222,7 @@ class Collection implements CollectionInterface
 	 * Gets the item at the specified offset.
 	 *
 	 * @param mixed $offset The offset to retrieve.
-	 * @return mixed|T
+	 * @return Item
 	 */
 	public function offsetGet(mixed $offset): mixed
 	{
@@ -277,7 +282,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Gets the first item in the collection or null if the collection is empty.
 	 *
-	 * @return T|mixed|null
+	 * @return ?Item
 	 */
 	public function first(): mixed
 	{
@@ -285,20 +290,9 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Creates a new Collection instance from the given array.
-	 *
-	 * @param array $data The array to create the collection from.
-	 * @return static
-	 */
-	public static function make(array $data): static
-	{
-		return new static($data);
-	}
-
-	/**
 	 * Gets the last item in the collection or null if the collection is empty.
 	 *
-	 * @return T|mixed|null
+	 * @return ?Item
 	 */
 	public function last(): mixed
 	{
@@ -310,7 +304,7 @@ class Collection implements CollectionInterface
 	 *
 	 * @param int $index The index to retrieve.
 	 * @param bool $strict Indicates whether to throw an exception if the index does not exist.
-	 * @return T|mixed
+	 * @return ?Item
 	 * @throws ItemNotFoundException
 	 */
 	public function index(int $index, bool $strict = false): mixed
@@ -377,7 +371,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Checks if the collection contains a given item.
 	 *
-	 * @param T|mixed $item The item to check for.
+	 * @param Item $item The item to check for.
 	 * @return bool
 	 */
 	public function has(mixed $item): bool
@@ -408,8 +402,8 @@ class Collection implements CollectionInterface
 	/**
 	 * Appends an item to the collection.
 	 *
-	 * @param T|mixed $item The item to append.
-	 * @return static
+	 * @param Item $item The item to append.
+	 * @return static<Item>
 	 * @throws InvalidLiteralTypeException
 	 * @throws InvalidTypeException
 	 */
@@ -444,8 +438,8 @@ class Collection implements CollectionInterface
 	/**
 	 * Prepends an item to the collection.
 	 *
-	 * @param T|mixed $item The item to prepend.
-	 * @return static
+	 * @param Item $item The item to prepend.
+	 * @return static<Item>
 	 * @throws InvalidLiteralTypeException
 	 * @throws InvalidTypeException
 	 */
