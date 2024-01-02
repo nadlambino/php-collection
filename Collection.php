@@ -101,7 +101,10 @@ class Collection implements CollectionInterface
 		$actualType = $this->getItemType($item);
 		$expectedType = $this->getType();
 
-		return $expectedType === '' || $expectedType === Type::MIXED->value || $expectedType === $actualType;
+		return $expectedType === ''
+			|| $expectedType === Type::MIXED
+			|| $expectedType === Type::MIXED->value
+			|| $expectedType === $actualType;
 	}
 
 	/**
@@ -513,6 +516,71 @@ class Collection implements CollectionInterface
 
 		$collection = clone $this;
 		$collection->items = [...$a, ...$b];
+		$collection->type = $aType !== $bType ? TYPE::MIXED : $aType;
+
+		return $collection;
+	}
+
+	/**
+	 * Map through the collection items.
+	 *
+	 * Note: Items will be modified no matter if the collection is mutable or not.
+	 *
+	 * @param Closure|callable $callback The callable method to be called on every item.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @return static
+	 */
+	public function map(Closure|callable $callback, bool $checkType = true): static
+	{
+		$items = array_map(function ($item) use ($callback, $checkType) {
+			$item = $callback($item);
+			$aType = $this->getType();
+			$bType = $this->getItemType($item);
+
+			if ($this->isValidType($item) || $checkType === false) {
+				return $item;
+			}
+
+			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
+			throw new InvalidTypeException("Invalid type encountered during map. Expecting type [$aType], [$bType] given.");
+		}, $this->items);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+			$this->type = $checkType ? $this->getType() : Type::MIXED;
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+		$collection->type = $checkType ? $collection->getType() : Type::MIXED;
+
+		return $collection;
+	}
+
+	/**
+	 * Merge two collections.
+	 *
+	 * @param CollectionInterface $collection The other collection to merge with.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @return static
+	 */
+	public function merge(CollectionInterface $collection, bool $checkType = true): static
+	{
+		if (($aType = $this->getType()) !== ($bType = $collection->getType()) && $checkType) {
+			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
+			throw new InvalidTypeException("Invalid type encountered during merge. Expecting type [$aType], [$bType] given.");
+		}
+
+		$items = array_merge($this->items, $collection->toArray());
+
+		if ($this->isMutable) {
+			$this->items = $items;
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
 		$collection->type = $aType !== $bType ? TYPE::MIXED : $aType;
 
 		return $collection;
