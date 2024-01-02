@@ -28,7 +28,7 @@ class Collection implements CollectionInterface
 	/**
 	 * Constructor for Collection.
 	 *
-	 * @param array|Item[]|CollectionInterface $items The initial set of items for the collection.
+	 * @param array|Item[]|CollectionInterface<Item> $items The initial set of items for the collection.
 	 * @param class-string<Item>|Item|Type|string|int|float|bool|null|false $type The expected type of collection items.
 	 * @param bool $isLiteralType Indicates whether the type is literal or not.
 	 * @param bool $isMutable Indicates whether the collection is mutable or not.
@@ -47,10 +47,11 @@ class Collection implements CollectionInterface
 	/**
 	 * Validates the type of each item in the collection against the expected type.
 	 *
+	 * @return void
 	 * @throws InvalidLiteralTypeException
 	 * @throws InvalidTypeException
 	 */
-	protected function validateType()
+	protected function validateType(): void
 	{
 		$expectedType = $this->getType();
 		if ($this->isEmpty()) {
@@ -145,6 +146,8 @@ class Collection implements CollectionInterface
 	}
 
 	/**
+	 * Magic method to set an item in the collection.
+	 *
 	 * @param string $name
 	 * @param Item $value
 	 * @return void
@@ -234,7 +237,7 @@ class Collection implements CollectionInterface
 	 * If offset is empty, push the value to items.
 	 *
 	 * @param mixed $offset The offset to set.
-	 * @param mixed $value The value to set.
+	 * @param Item $value The value to set.
 	 */
 	public function offsetSet(mixed $offset, mixed $value): void
 	{
@@ -280,7 +283,7 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Gets the first item in the collection or null if the collection is empty.
+	 * Gets the first item in the collection or return null if the collection is empty.
 	 *
 	 * @return ?Item
 	 */
@@ -290,7 +293,7 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Gets the last item in the collection or null if the collection is empty.
+	 * Gets the last item in the collection or return null if the collection is empty.
 	 *
 	 * @return ?Item
 	 */
@@ -332,6 +335,7 @@ class Collection implements CollectionInterface
 
 	/**
 	 * Chunks the collection into smaller collections.
+	 * Returns a new collection of type array.
 	 *
 	 * @param int $length The size of each chunk.
 	 * @param bool $preserveKeys Whether to preserve the keys of the original collection.
@@ -491,7 +495,7 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Get the difference of two collections, merge them and return as a new Collection
+	 * Get the difference of two collections, merge them and return as a new collection
 	 *
 	 * @param CollectionInterface $collection The collection to compare with.
 	 * @param bool $checkType Determine whether to check the type of two collections.
@@ -499,7 +503,7 @@ class Collection implements CollectionInterface
 	 */
 	public function diff(CollectionInterface $collection, bool $checkType = true): static
 	{
-		if ($checkType && ($aType = $this->getType()) !== ($bType = $collection->getType())) {
+		if (($aType = $this->getType()) !== ($bType = $collection->getType()) && $checkType) {
 			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
 			throw new InvalidTypeException("Invalid type encountered during diff. Expecting type [$aType], [$bType] given.");
 		}
@@ -509,7 +513,7 @@ class Collection implements CollectionInterface
 
 		$collection = clone $this;
 		$collection->items = [...$a, ...$b];
-		$collection->type = TYPE::MIXED;
+		$collection->type = $aType !== $bType ? TYPE::MIXED : $aType;
 
 		return $collection;
 	}
