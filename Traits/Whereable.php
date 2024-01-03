@@ -6,6 +6,7 @@ use ArrayAccess;
 use ArrayObject;
 use Closure;
 use Error;
+use InvalidArgumentException;
 use Inspira\Collection\Enums\Type;
 use Inspira\Contracts\Arrayable;
 
@@ -46,21 +47,22 @@ trait Whereable
 				$argsCount === 2 => $comparison,
 				default => $value
 			};
-			$column = $this->getFilterCallback($column, $newComparison, $value);
+			$callback = $this->getFilterCallback($column, $newComparison, $value);
 		}
 
-		return $this->filter($column);
+		return $this->filter($callback ?? $column);
 	}
 
 	/**
 	 * Filters the collection to include only items where the specified column is like the given value.
+	 * When only 1 argument is given, it will be used as the value to compare against the item
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on or the value to compare against the item if it's not an object or associative array.
 	 * @param string $value The value to compare against.
 	 * @param bool $strict Indicates whether to perform a strict comparison.
 	 * @return static The filtered collection.
 	 */
-	public function whereLike(string $column, string $value, bool $strict = false): static
+	public function whereLike(?string $column, string $value, bool $strict = false): static
 	{
 		$comparison = match (true) {
 			str_starts_with($value, '%') && str_ends_with($value, '%') => '%LIKE%',
@@ -74,13 +76,14 @@ trait Whereable
 
 	/**
 	 * Filters the collection to exclude items where the specified column is like the given value.
+	 * When only 1 argument is given, it will be used as the value to compare against the item
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column
 	 * @param string $value The value to compare against.
 	 * @param bool $strict Indicates whether to perform a strict comparison.
 	 * @return static The filtered collection.
 	 */
-	public function whereNotLike(string $column, string $value, bool $strict = false): static
+	public function whereNotLike(?string $column, string $value, bool $strict = false): static
 	{
 		$comparison = match (true) {
 			str_starts_with($value, '%') && str_ends_with($value, '%') => '%NOT_LIKE%',
@@ -95,10 +98,10 @@ trait Whereable
 	/**
 	 * Filters the collection to include only items where the specified column is null.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @return static The filtered collection.
 	 */
-	public function whereNull(string $column): static
+	public function whereNull(?string $column): static
 	{
 		return $this->filter($this->getFilterCallback($column, '=', null));
 	}
@@ -106,10 +109,10 @@ trait Whereable
 	/**
 	 * Filters the collection to exclude items where the specified column is null.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @return static The filtered collection.
 	 */
-	public function whereNotNull(string $column): static
+	public function whereNotNull(?string $column): static
 	{
 		return $this->filter($this->getFilterCallback($column, '!=', null));
 	}
@@ -117,12 +120,12 @@ trait Whereable
 	/**
 	 * Filters the collection to include only items where the specified column is between the given bounds.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @param mixed $lowerBound The lower bound of the range.
 	 * @param mixed $upperBound The upper bound of the range.
 	 * @return static The filtered collection.
 	 */
-	public function whereBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	public function whereBetween(?string $column, mixed $lowerBound, mixed $upperBound): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'BETWEEN', [$lowerBound, $upperBound]));
 	}
@@ -130,12 +133,12 @@ trait Whereable
 	/**
 	 * Filters the collection to exclude items where the specified column is between the given bounds.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @param mixed $lowerBound The lower bound of the range.
 	 * @param mixed $upperBound The upper bound of the range.
 	 * @return static The filtered collection.
 	 */
-	public function whereNotBetween(string $column, mixed $lowerBound, mixed $upperBound): static
+	public function whereNotBetween(?string $column, mixed $lowerBound, mixed $upperBound): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'NOT_BETWEEN', [$lowerBound, $upperBound]));
 	}
@@ -143,11 +146,11 @@ trait Whereable
 	/**
 	 * Filters the collection to include only items where the specified column is in the given array of values.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @param array $values The array of values to check against.
 	 * @return static The filtered collection.
 	 */
-	public function whereIn(string $column, array $values): static
+	public function whereIn(?string $column, array $values): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'IN', $values));
 	}
@@ -155,11 +158,11 @@ trait Whereable
 	/**
 	 * Filters the collection to exclude items where the specified column is in the given array of values.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @param array $values The array of values to check against.
 	 * @return static The filtered collection.
 	 */
-	public function whereNotIn(string $column, array $values): static
+	public function whereNotIn(?string $column, array $values): static
 	{
 		return $this->filter($this->getFilterCallback($column, 'NOT_IN', $values));
 	}
@@ -167,13 +170,13 @@ trait Whereable
 	/**
 	 * Creates a callback function for filtering the collection based on a specified condition.
 	 *
-	 * @param string $column The column to filter on.
+	 * @param string|null $column The column to filter on.
 	 * @param string $comparison The comparison value.
 	 * @param mixed $search The value to compare against.
 	 * @param bool $strict Indicates whether to perform a strict comparison.
 	 * @return Closure The callback function for filtering the collection.
 	 */
-	protected function getFilterCallback(string $column, string $comparison, mixed $search, bool $strict = false): Closure
+	protected function getFilterCallback(?string $column, string $comparison, mixed $search, bool $strict = false): Closure
 	{
 		return function ($item) use ($column, $comparison, $search, $strict): bool {
 			$value = $this->getItemValue($item, $column);
@@ -210,32 +213,34 @@ trait Whereable
 	 * Gets the value of a specified column from an item in the collection.
 	 *
 	 * @param mixed $item The item to retrieve the value from.
-	 * @param string $column The name of the column to get the value from.
+	 * @param string|null $column The name of the column to get the value from.
 	 * @return mixed The value of the specified column in the item.
-	 * @throws Error When the column is not found in the collection item type.
 	 */
-	protected function getItemValue(mixed $item, string $column): mixed
+	protected function getItemValue(mixed $item, ?string $column): mixed
 	{
 		$expectedType = $this->getType();
 		$actualType = gettype($item);
 		[$actual] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
 
 		return match (true) {
+			// Handle stringable item type on an empty column name
+			empty($column) && stringable($item) => $item,
+
+			// Throw exception when the column is not provided and the item is not stringable
+			empty($column) && !stringable($item) => throw new InvalidArgumentException("Cannot provide an empty column name to a non stringable items."),
+
 			// Object item type
 			is_object($item),
-				$item instanceof ArrayObject,
-				$actualType === Type::OBJECT->value,
-				$expectedType === Type::OBJECT->value => $item->$column,
+			$item instanceof ArrayObject,
+			$actualType === Type::OBJECT->value,
+			$expectedType === Type::OBJECT->value => $item->$column,
 
 			// Array item type
 			is_array($item),
-				$item instanceof ArrayAccess,
-				$actualType === Type::ARRAY->value,
-				$expectedType === Type::ARRAY->value => $item[$column],
+			$item instanceof ArrayAccess,
+			$actualType === Type::ARRAY->value,
+			$expectedType === Type::ARRAY->value => $item[$column],
 			$item instanceof Arrayable => $item->toArray()[$column],
-
-			// Stringable item type
-			stringable($item) => $item,
 
 			// Unhandled item types
 			default => throw new Error("Cannot find column [$column] in collection item type [$actual].")
