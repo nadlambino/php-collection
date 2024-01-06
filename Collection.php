@@ -155,6 +155,8 @@ class Collection implements CollectionInterface
 	 */
 	public function offsetSet(mixed $offset, mixed $value): void
 	{
+		$this->validateItemType($value);
+
 		if ($this->isMutable === false) {
 			throw new ImmutableCollectionException("Cannot set an item of an immutable collection.");
 		}
