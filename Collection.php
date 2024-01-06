@@ -412,7 +412,8 @@ class Collection implements CollectionInterface
 	/**
 	 * Map through the collection items.
 	 *
-	 * Note: Items will be modified no matter if the collection is mutable or not.
+	 * Note: Items that are objects will be modified no matter if the collection is mutable or not.
+	 * This is due to the fact that objects are pass by reference and not by value.
 	 *
 	 * @param Closure|callable $callback The callable method to be called on every item.
 	 * @param bool $checkType Determine whether to check the type of two collections.
