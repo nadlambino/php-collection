@@ -29,107 +29,19 @@ class Collection implements CollectionInterface
 	 * Constructor for Collection.
 	 *
 	 * @param array|Item[]|CollectionInterface<Item> $items The initial set of items for the collection.
-	 * @param class-string<Item>|Item|Type|string|int|float|bool|null|false $type The expected type of collection items.
+	 * @param class-string<Item>|Item|Type|mixed $type The expected type of collection items.
 	 * @param bool $isLiteralType Indicates whether the type is literal or not.
 	 * @param bool $isMutable Indicates whether the collection is mutable or not.
 	 */
 	public function __construct(
-		protected array|CollectionInterface       $items = [],
-		protected Type|string|int|float|bool|null $type = Type::MIXED,
-		protected bool                            $isLiteralType = false,
-		protected bool                            $isMutable = false
+		protected array|CollectionInterface $items = [],
+		protected mixed                     $type = Type::MIXED,
+		public readonly bool                $isLiteralType = false,
+		public readonly bool                $isMutable = false
 	)
 	{
 		$this->items = $items instanceof CollectionInterface ? $items->toArray() : $items;
-		$this->validateType();
-	}
-
-	/**
-	 * Validates the type of each item in the collection against the expected type.
-	 *
-	 * @return void
-	 * @throws InvalidLiteralTypeException
-	 * @throws InvalidTypeException
-	 */
-	protected function validateType(): void
-	{
-		$expectedType = $this->getType();
-		if ($this->isEmpty()) {
-			return;
-		}
-
-		foreach ($this->items as $key => $item) {
-			$actualType = $this->getItemType($item);
-
-			if ($this->isValidType($item)) {
-				continue;
-			}
-
-			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
-				throw new InvalidLiteralTypeException("Invalid item type encountered at position [$key]. Expecting literal [$expectedType], [$actualType] given.");
-			}
-
-			throw new InvalidTypeException("Invalid item type encountered at position [$key]. Expecting type [$expectedType], [$actualType] given.");
-		}
-	}
-
-	/**
-	 * Get a string representation of actual and expected literal type
-	 *
-	 * @param mixed $actual
-	 * @param mixed $expected
-	 * @return array
-	 */
-	protected function getActualAndExpectedTypeAsString(mixed $actual, mixed $expected): array
-	{
-		if ($this->isLiteralType) {
-			return [json_encode($actual), json_encode($expected)];
-		}
-
-		return [$actual, $expected];
-	}
-
-	/**
-	 * Checks if the given item is of a valid type.
-	 *
-	 * @param Item $item The item to check.
-	 * @return bool
-	 */
-	protected function isValidType(mixed $item): bool
-	{
-		$actualType = $this->getItemType($item);
-		$expectedType = $this->getType();
-
-		return $expectedType === ''
-			|| $expectedType === Type::MIXED
-			|| $expectedType === Type::MIXED->value
-			|| $expectedType === $actualType;
-	}
-
-	/**
-	 * Gets the type of the given item.
-	 *
-	 * @param Item $item The item to get the type of.
-	 * @return mixed
-	 */
-	protected function getItemType(mixed $item): mixed
-	{
-		if ($this->isLiteralType) {
-			return $item;
-		}
-
-		return is_object($item) ? get_class($item) : gettype($item);
-	}
-
-	/**
-	 * Gets the type of the collection.
-	 *
-	 * @return mixed
-	 */
-	public function getType(): mixed
-	{
-		return $this->type instanceof Type ? $this->type->value : $this->type;
+		$this->validate();
 	}
 
 	/**
@@ -157,20 +69,9 @@ class Collection implements CollectionInterface
 	 */
 	public function __set(string $name, mixed $value): void
 	{
-		if ($this->isValidType($value)) {
-			$this->items[$name] = $value;
-			return;
-		}
+		$this->validateItemType($value);
 
-		$expectedType = $this->getType();
-		$actualType = $this->getItemType($value);
-
-		if ($this->isLiteralType) {
-			[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
-			throw new InvalidLiteralTypeException("Invalid item type encountered during __set. Expecting literal [$expectedType], [$actualType] given.");
-		}
-
-		throw new InvalidTypeException("Invalid item type encountered during __set. Expecting type [$expectedType], [$actualType] given.");
+		$this->items[$name] = $value;
 	}
 
 	/**
@@ -194,13 +95,13 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Converts the collection to an array.
+	 * Gets the type of the collection.
 	 *
-	 * @return Item[]
+	 * @return mixed
 	 */
-	public function toArray(): array
+	public function getType(): mixed
 	{
-		return $this->items;
+		return $this->type instanceof Type ? $this->type->value : $this->type;
 	}
 
 	/**
@@ -211,6 +112,16 @@ class Collection implements CollectionInterface
 	public function count(): int
 	{
 		return count($this->items);
+	}
+
+	/**
+	 * Converts the collection to an array.
+	 *
+	 * @return Item[]
+	 */
+	public function toArray(): array
+	{
+		return $this->items;
 	}
 
 	/**
@@ -282,7 +193,7 @@ class Collection implements CollectionInterface
 	 */
 	public function isEmpty(): bool
 	{
-		return $this->count() === 0;
+		return empty($this->items);
 	}
 
 	/**
@@ -416,18 +327,7 @@ class Collection implements CollectionInterface
 	 */
 	public function append(mixed $item): static
 	{
-		$expectedType = $this->getType();
-		if (!$this->isValidType($item)) {
-			$actualType = $this->getItemType($item);
-			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
-
-			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
-				throw new InvalidLiteralTypeException("Invalid item type encountered during append. Expecting literal [$expectedType], [$actualType] given.");
-			}
-
-			throw new InvalidTypeException("Invalid item type encountered during append. Expecting type [$expectedType], [$actualType] given.");
-		}
+		$this->validateItemType($item);
 
 		if ($this->isMutable) {
 			$this->offsetSet(null, $item);
@@ -438,7 +338,7 @@ class Collection implements CollectionInterface
 		$collection = clone $this;
 		$collection->items[] = $item;
 
-		/** @var static */
+		/** @var static<Item> */
 		return $collection;
 	}
 
@@ -452,18 +352,7 @@ class Collection implements CollectionInterface
 	 */
 	public function prepend(mixed $item): static
 	{
-		$expectedType = $this->getType();
-		if (!$this->isValidType($item)) {
-			$actualType = $this->getItemType($item);
-			$actualType = is_object($actualType) ? get_class($actualType) : $actualType;
-
-			if ($this->isLiteralType) {
-				[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
-				throw new InvalidLiteralTypeException("Invalid item type encountered during prepend. Expecting literal [$expectedType], [$actualType] given.");
-			}
-
-			throw new InvalidTypeException("Invalid item type encountered during prepend. Expecting type [$expectedType], [$actualType] given.");
-		}
+		$this->validateItemType($item);
 
 		if ($this->isMutable) {
 			array_unshift($this->items, $item);
@@ -506,19 +395,18 @@ class Collection implements CollectionInterface
 	 */
 	public function diff(CollectionInterface $collection, bool $checkType = true): static
 	{
-		if (($aType = $this->getType()) !== ($bType = $collection->getType()) && $checkType) {
-			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
-			throw new InvalidTypeException("Invalid type encountered during diff. Expecting type [$aType], [$bType] given.");
+		if ($checkType) {
+			$this->validateCollectionType($collection);
 		}
 
 		$a = array_udiff($this->items, $collection->toArray(), $this->getComparisonCallback());
 		$b = array_udiff($collection->toArray(), $this->items, $this->getComparisonCallback());
 
-		$collection = clone $this;
-		$collection->items = [...$a, ...$b];
-		$collection->type = $aType !== $bType ? TYPE::MIXED : $aType;
+		$newCollection = clone $this;
+		$newCollection->items = [...$a, ...$b];
+		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
 
-		return $collection;
+		return $newCollection;
 	}
 
 	/**
@@ -533,16 +421,11 @@ class Collection implements CollectionInterface
 	public function map(Closure|callable $callback, bool $checkType = true): static
 	{
 		$items = array_map(function ($item) use ($callback, $checkType) {
-			$item = $callback($item);
-			$aType = $this->getType();
-			$bType = $this->getItemType($item);
-
-			if ($this->isValidType($item) || $checkType === false) {
-				return $item;
+			if ($checkType) {
+				$this->validateItemType($item);
 			}
 
-			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
-			throw new InvalidTypeException("Invalid type encountered during map. Expecting type [$aType], [$bType] given.");
+			return $callback($item);
 		}, $this->items);
 
 		if ($this->isMutable) {
@@ -567,9 +450,8 @@ class Collection implements CollectionInterface
 	 */
 	public function merge(CollectionInterface $collection, bool $checkType = true): static
 	{
-		if (($aType = $this->getType()) !== ($bType = $collection->getType()) && $checkType) {
-			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
-			throw new InvalidTypeException("Invalid type encountered during merge. Expecting type [$aType], [$bType] given.");
+		if ($checkType) {
+			$this->validateCollectionType($collection);
 		}
 
 		$items = array_merge($this->items, $collection->toArray());
@@ -579,11 +461,125 @@ class Collection implements CollectionInterface
 			return $this;
 		}
 
-		$collection = clone $this;
-		$collection->items = $items;
-		$collection->type = $aType !== $bType ? TYPE::MIXED : $aType;
+		$newCollection = clone $this;
+		$newCollection->items = $items;
+		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
 
-		return $collection;
+		return $newCollection;
+	}
+
+	/**
+	 * Validate the type of the given item.
+	 *
+	 * It will throw an exception if an invalid type is encountered.
+	 *
+	 * @param mixed $item
+	 * @return void
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
+	 */
+	protected function validateItemType(mixed $item): void
+	{
+		if ($this->isValidType($item)) {
+			return;
+		}
+
+		$expectedType = $this->getType();
+		$actualType = $this->getItemType($item);
+
+		if ($this->isLiteralType) {
+			[$actualType, $expectedType] = $this->getActualAndExpectedTypeAsString($actualType, $expectedType);
+			throw new InvalidLiteralTypeException("Invalid item type encountered, expecting literal type of [$expectedType], [$actualType] given.");
+		}
+
+		throw new InvalidTypeException("Invalid item type encountered, expecting type of [$expectedType], [$actualType] given.");
+	}
+
+	/**
+	 * Validate the type of current collection against another collection.
+	 *
+	 * It will throw an exception if the two collection is not of the same type.
+	 *
+	 * @param CollectionInterface $collection
+	 * @return void
+	 * @throws InvalidTypeException
+	 */
+	protected function validateCollectionType(CollectionInterface $collection): void
+	{
+		if ($this->isLiteralType !== $collection->isLiteralType) {
+			throw new InvalidTypeException("Collection type mismatch, one expects a literal type.");
+		}
+
+		if (($aType = $this->getType()) !== ($bType = $collection->getType())) {
+			[$aType, $bType] = $this->getActualAndExpectedTypeAsString($aType, $bType);
+			throw new InvalidTypeException("Collection type mismatch, expecting type of [$aType], [$bType] given.");
+		}
+	}
+
+	/**
+	 * Validates the type of each item in the collection against the expected type.
+	 *
+	 * @return void
+	 * @throws InvalidLiteralTypeException
+	 * @throws InvalidTypeException
+	 */
+	protected function validate(): void
+	{
+		if ($this->isEmpty()) {
+			return;
+		}
+
+		foreach ($this->items as $item) {
+			$this->validateItemType($item);
+		}
+	}
+
+	/**
+	 * Get a string representation of actual and expected literal type
+	 *
+	 * @param mixed $actual
+	 * @param mixed $expected
+	 * @return array
+	 */
+	protected function getActualAndExpectedTypeAsString(mixed $actual, mixed $expected): array
+	{
+		if ($this->isLiteralType) {
+			return [json_encode($actual), json_encode($expected)];
+		}
+
+		return [$actual, $expected];
+	}
+
+	/**
+	 * Checks if the given item is of a valid type.
+	 *
+	 * @param Item $item The item to check.
+	 * @return bool
+	 */
+	protected function isValidType(mixed $item): bool
+	{
+		$actualType = $this->getItemType($item);
+		$expectedType = $this->getType();
+
+		return $expectedType === ''
+			|| $expectedType === Type::MIXED
+			|| $expectedType === Type::MIXED->value
+			|| $expectedType === $actualType;
+	}
+
+	/**
+	 * Gets the type of the given item.
+	 *
+	 * @param Item $item The item to get the type of.
+	 * @return mixed
+	 */
+	protected function getItemType(mixed $item): mixed
+	{
+		if ($this->isLiteralType) {
+			return $item;
+		}
+
+		return is_object($item) ? get_class($item) : gettype($item);
 	}
 
 	/**
