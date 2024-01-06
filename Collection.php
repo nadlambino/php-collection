@@ -422,11 +422,12 @@ class Collection implements CollectionInterface
 	public function map(Closure|callable $callback, bool $checkType = true): static
 	{
 		$items = array_map(function ($item) use ($callback, $checkType) {
+			$item = $callback($item);
 			if ($checkType) {
 				$this->validateItemType($item);
 			}
 
-			return $callback($item);
+			return $item;
 		}, $this->items);
 
 		if ($this->isMutable) {
