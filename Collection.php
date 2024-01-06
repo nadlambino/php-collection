@@ -535,7 +535,7 @@ class Collection implements CollectionInterface
 	}
 
 	/**
-	 * Get a string representation of actual and expected literal type
+	 * Get a string representation of actual and expected type
 	 *
 	 * @param mixed $actual
 	 * @param mixed $expected
