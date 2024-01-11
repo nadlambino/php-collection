@@ -393,16 +393,17 @@ class Collection implements CollectionInterface
 	 *
 	 * @param CollectionInterface $collection The collection to compare with.
 	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @param Closure|callable|null $comparator A custom callback function for item comparison (optional).
 	 * @return static
 	 */
-	public function diff(CollectionInterface $collection, bool $checkType = true): static
+	public function diff(CollectionInterface $collection, bool $checkType = true, Closure|callable $comparator = null): static
 	{
 		if ($checkType) {
 			$this->validateCollectionType($collection);
 		}
 
-		$a = array_udiff($this->items, $collection->toArray(), $this->getComparisonCallback());
-		$b = array_udiff($collection->toArray(), $this->items, $this->getComparisonCallback());
+		$a = array_udiff($this->items, $collection->toArray(), $comparator ?? $this->getComparisonCallback());
+		$b = array_udiff($collection->toArray(), $this->items, $comparator ?? $this->getComparisonCallback());
 
 		$newCollection = clone $this;
 		$newCollection->items = [...$a, ...$b];
@@ -414,18 +415,24 @@ class Collection implements CollectionInterface
 	/**
 	 * Get the difference of two collections while also checking the keys, merge them and return as a new collection
 	 *
-	 * @param CollectionInterface $collection
-	 * @param bool $checkType
+	 * @param CollectionInterface $collection The collection to compare with.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @param Closure|callable|null $comparator A custom callback function for item comparison (optional).
 	 * @return $this
 	 */
-	public function diffAssoc(CollectionInterface $collection, bool $checkType = true): static
+	public function diffAssoc(CollectionInterface $collection, bool $checkType = true, Closure|callable $comparator = null): static
 	{
 		if ($checkType) {
 			$this->validateCollectionType($collection);
 		}
 
-		$a = array_diff_assoc($this->items, $collection->toArray());
-		$b = array_diff_assoc($collection->toArray(), $this->items);
+		if ($comparator) {
+			$a = array_diff_uassoc($this->items, $collection->toArray(), $comparator);
+			$b = array_diff_uassoc($collection->toArray(), $this->items, $comparator);
+		} else {
+			$a = array_diff_assoc($this->items, $collection->toArray());
+			$b = array_diff_assoc($collection->toArray(), $this->items);
+		}
 
 		$newCollection = clone $this;
 		$newCollection->items = array_unique([...$a, ...$b]);
