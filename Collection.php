@@ -412,6 +412,29 @@ class Collection implements CollectionInterface
 	}
 
 	/**
+	 * Get the difference of two collections while also checking the keys, merge them and return as a new collection
+	 *
+	 * @param CollectionInterface $collection
+	 * @param bool $checkType
+	 * @return $this
+	 */
+	public function diffAssoc(CollectionInterface $collection, bool $checkType = true): static
+	{
+		if ($checkType) {
+			$this->validateCollectionType($collection);
+		}
+
+		$a = array_diff_assoc($this->items, $collection->toArray());
+		$b = array_diff_assoc($collection->toArray(), $this->items);
+
+		$newCollection = clone $this;
+		$newCollection->items = array_unique([...$a, ...$b]);
+		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
+
+		return $newCollection;
+	}
+
+	/**
 	 * Map through the collection items.
 	 *
 	 * Note: Items that are objects will be modified no matter if the collection is mutable or not.
