@@ -435,6 +435,82 @@ class Collection implements CollectionInterface
 	}
 
 	/**
+	 * Exchanges all keys with their associated values.
+	 * Note that it will run type checking.
+	 *
+	 * @return $this
+	 */
+	public function flip(): static
+	{
+		$items = array_flip($this->items);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+			$this->validate();
+
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+		$collection->validate();
+
+		return $collection;
+	}
+
+	/**
+	 * Get the intersection of two collections and return as a new collection.
+	 *
+	 * @param CollectionInterface $collection The collection to compare with.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @param Closure|callable|null $comparator A custom callback function for item comparison (optional).
+	 * @return static
+	 * @throws InvalidTypeException If the collection types do not match.
+	 */
+	public function intersect(CollectionInterface $collection, bool $checkType = true, Closure|callable $comparator = null): static
+	{
+		if ($checkType) {
+			$this->validateCollectionType($collection);
+		}
+
+		$items = $comparator
+			? array_uintersect($this->items, $collection->toArray(), $comparator)
+			: array_intersect($this->items, $collection->toArray());
+
+		$newCollection = clone $this;
+		$newCollection->items = $items;
+		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
+
+		return $newCollection;
+	}
+
+	/**
+	 * Get the intersection of two collections based on key-value pairs and return as a new collection.
+	 *
+	 * @param CollectionInterface $collection The collection to compare with.
+	 * @param bool $checkType Determine whether to check the type of two collections.
+	 * @param Closure|callable|null $comparator A custom callback function for item comparison (optional).
+	 * @return static
+	 * @throws InvalidTypeException If the collection types do not match.
+	 */
+	public function intersectAssoc(CollectionInterface $collection, bool $checkType = true, Closure|callable $comparator = null): static
+	{
+		if ($checkType) {
+			$this->validateCollectionType($collection);
+		}
+
+		$items = $comparator
+			? array_uintersect_assoc($this->items, $collection->toArray(), $comparator)
+			: array_intersect_assoc($this->items, $collection->toArray());
+
+		$newCollection = clone $this;
+		$newCollection->items = $items;
+		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
+
+		return $newCollection;
+	}
+
+	/**
 	 * Map through the collection items.
 	 *
 	 * Note: Items that are objects will be modified no matter if the collection is mutable or not.
