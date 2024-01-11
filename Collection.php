@@ -12,6 +12,7 @@ use Inspira\Collection\Exceptions\ImmutableCollectionException;
 use Inspira\Collection\Exceptions\InvalidLiteralTypeException;
 use Inspira\Collection\Exceptions\InvalidTypeException;
 use Inspira\Collection\Exceptions\ItemNotFoundException;
+use Inspira\Collection\Traits\Unique;
 use Inspira\Collection\Traits\Whereable;
 use Traversable;
 
@@ -23,7 +24,7 @@ use Traversable;
  */
 class Collection implements CollectionInterface
 {
-	use Whereable;
+	use Whereable, Unique;
 
 	/**
 	 * Constructor for Collection.
@@ -297,6 +298,17 @@ class Collection implements CollectionInterface
 	public function has(mixed $item): bool
 	{
 		return in_array($item, $this->items);
+	}
+
+	/**
+	 * Check if the key exists in the collection.
+	 *
+	 * @param string|int $key The key to check for.
+	 * @return bool
+	 */
+	public function hasKey(string|int $key): bool
+	{
+		return array_key_exists($key, $this->items);
 	}
 
 	/**
@@ -576,6 +588,84 @@ class Collection implements CollectionInterface
 		$newCollection->type = $this->getType() !== $collection->getType() ? TYPE::MIXED : $this->getType();
 
 		return $newCollection;
+	}
+
+	/**
+	 * Calculate the product of values in an array.
+	 *
+	 * @return float|int
+	 */
+	public function product(): float|int
+	{
+		return array_product($this->items);
+	}
+
+	/**
+	 * Iteratively reduce the collection to a single value using a callback function.
+	 *
+	 * @param Closure|callable $callback
+	 * @param mixed|null $initial
+	 * @return mixed
+	 */
+	public function reduce(Closure|callable $callback, mixed $initial = null): mixed
+	{
+		return array_reduce($this->items, $callback, $initial);
+	}
+
+	/**
+	 * Reverse the collection items.
+	 *
+	 * @param bool $preserveKeys
+	 * @return $this
+	 */
+	public function reverse(bool $preserveKeys = false): static
+	{
+		$items = array_reverse($this->items, $preserveKeys);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+
+		return $collection;
+	}
+
+	/**
+	 * Slice the collection starting from the given offset upto the given length.
+	 *
+	 * @param int $offset
+	 * @param int|null $length
+	 * @param bool $preserveKeys
+	 * @return $this
+	 */
+	public function slice(int  $offset, ?int $length = null, bool $preserveKeys = false): static
+	{
+		$items = array_slice($this->items, $offset, $length, $preserveKeys);
+
+		if ($this->isMutable) {
+			$this->items = $items;
+
+			return $this;
+		}
+
+		$collection = clone $this;
+		$collection->items = $items;
+
+		return $collection;
+	}
+
+	/**
+	 * Calculate the sum of values in the collection.
+	 *
+	 * @return float|int
+	 */
+	public function sum(): float|int
+	{
+		return array_sum($this->items);
 	}
 
 	/**
