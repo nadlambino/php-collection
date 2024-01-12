@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Inspira\Collection\Traits;
 
+use Closure;
 use Inspira\Collection\Exceptions\ColumnNotFoundException;
 
 /**
@@ -16,28 +17,17 @@ use Inspira\Collection\Exceptions\ColumnNotFoundException;
 trait Unique
 {
 	/**
-	 * Filter the collection to contain only unique items based on the specified column.
+	 * Filter the collection to contain only unique items based on a specified column or using a custom closure.
 	 *
-	 * @param string|null $column The column or key to be used for uniqueness. If null, the entire item is considered for uniqueness.
-	 * @param bool $strict Whether to perform a strict comparison when checking for uniqueness. Default is false (non-strict comparison).
-	 * @return static Returns a new collection or mutates the existing one based on isMutable property.
-	 * @throws ColumnNotFoundException
+	 * @param Closure|string|null $column The column name or closure used for uniqueness comparison. Default is null.
+	 * @param bool $strict Whether to perform a strict type check when comparing items. Default is false.
+	 * @param bool $throwIfColumnNotFound Whether to throw an exception if the specified column is not found. Default is true.
+	 * @return static A new collection containing only unique items based on the specified column or closure.
+	 * @throws ColumnNotFoundException If $throwIfColumnNotFound is true and the specified column is not found.
 	 */
-	public function unique(string $column = null, bool $strict = false): static
+	public function unique(Closure|string $column = null, bool $strict = false, bool $throwIfColumnNotFound = true): static
 	{
-		$items = [];
-		$tracker = [];
-
-		foreach ($this->items as $item) {
-			$value = stringable($item) || is_null($column)
-				? $item
-				: $this->getValueByDottedKey($item, $column);
-
-			if (!in_array($value, $tracker, $strict)) {
-				$items[] = $item;
-				$tracker[] = $value;
-			}
-		}
+		$items = $this->getUniqueItems($column, $strict, $throwIfColumnNotFound);
 
 		if ($this->isMutable) {
 			$this->items = $items;
@@ -49,6 +39,46 @@ trait Unique
 		$collection->items = $items;
 
 		return $collection;
+	}
+
+	/**
+	 * Filter the collection to contain only unique items based on a specified column or using a custom closure.
+	 *
+	 * @param Closure|string|null $column The column name or closure used for uniqueness comparison. Default is null.
+	 * @param bool $strict Whether to perform a strict type check when comparing items. Default is false.
+	 * @param bool $throwIfColumnNotFound Whether to throw an exception if the specified column is not found. Default is true.
+	 * @return array An array of unique items.
+	 * @throws ColumnNotFoundException If $throwIfColumnNotFound is true and the specified column is not found.
+	 */
+	protected function getUniqueItems(Closure|string|null $column, bool $strict, bool $throwIfColumnNotFound = true): array
+	{
+		if ($column instanceof Closure) {
+			return $column($this->items);
+		}
+
+		$items = [];
+		$tracker = [];
+
+		foreach ($this->items as $item) {
+			try {
+				$value = stringable($item) || is_null($column)
+					? $item
+					: $this->getValueByDottedKey($item, $column);
+
+				if (!in_array($value, $tracker, $strict)) {
+					$items[] = $item;
+					$tracker[] = $value;
+				}
+			} catch (ColumnNotFoundException $exception) {
+				if ($throwIfColumnNotFound) {
+					throw $exception;
+				}
+
+				$items[] = $item;
+			}
+		}
+
+		return $items;
 	}
 
 	/**
