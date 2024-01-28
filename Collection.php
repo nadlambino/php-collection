@@ -764,7 +764,8 @@ class Collection implements CollectionInterface
 		return $expectedType === ''
 			|| $expectedType === Type::MIXED
 			|| $expectedType === Type::MIXED->value
-			|| $expectedType === $actualType;
+			|| $expectedType === $actualType
+			|| (is_string($expectedType) && $item instanceof $expectedType);
 	}
 
 	/**
