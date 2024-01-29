@@ -14,6 +14,7 @@ use Inspira\Collection\Exceptions\InvalidTypeException;
 use Inspira\Collection\Exceptions\ItemNotFoundException;
 use Inspira\Collection\Traits\Unique;
 use Inspira\Collection\Traits\Whereable;
+use Inspira\Contracts\Arrayable;
 use Traversable;
 
 /**
@@ -122,6 +123,16 @@ class Collection implements CollectionInterface
 	 */
 	public function toArray(): array
 	{
+		$items = $this->items;
+
+		foreach ($items as $key => $value) {
+			if ($value instanceof Arrayable) {
+				$items[$key] = $value->toArray();
+			} else if (is_iterable($value)) {
+				$items[$key] = iterator_to_array($value);
+			}
+		}
+
 		return $this->items;
 	}
 
