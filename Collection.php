@@ -133,7 +133,7 @@ class Collection implements CollectionInterface
 			}
 		}
 
-		return $this->items;
+		return $items;
 	}
 
 	/**
