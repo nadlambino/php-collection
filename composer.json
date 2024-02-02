@@ -3,6 +3,7 @@
     "description": "PHP collection component.",
     "type": "library",
     "require": {
+        "php": "8.3",
         "inspira/contracts": "dev-master",
         "inspira/utils": "dev-master"
     },
