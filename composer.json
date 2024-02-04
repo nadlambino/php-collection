@@ -3,15 +3,16 @@
     "description": "PHP collection component.",
     "type": "library",
     "require": {
-        "php": "8.3",
+        "php": "^8.3",
         "inspira/contracts": "dev-master",
         "inspira/utils": "dev-master"
     },
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Inspira\\Collection\\": "."
-        }
+            "Inspira\\Collection\\": "/src"
+        },
+        "files": ["src/functions.php"]
     },
     "authors": [
         {

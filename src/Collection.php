@@ -123,17 +123,13 @@ class Collection implements CollectionInterface
 	 */
 	public function toArray(): array
 	{
-		$items = $this->items;
-
-		foreach ($items as $key => $value) {
-			if ($value instanceof Arrayable) {
-				$items[$key] = $value->toArray();
-			} else if (is_iterable($value)) {
-				$items[$key] = iterator_to_array($value);
-			}
-		}
-
-		return $items;
+		return array_values(array_map(function($item) {
+			return match (true) {
+				$item instanceof Arrayable => $item->toArray(),
+				is_iterable($item) => array_values(iterator_to_array($item)),
+				default => $item
+			};
+		}, $this->items));
 	}
 
 	/**
