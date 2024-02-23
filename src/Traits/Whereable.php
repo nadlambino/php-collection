@@ -9,6 +9,7 @@ use Error;
 use InvalidArgumentException;
 use Inspira\Collection\Enums\Type;
 use Inspira\Contracts\Arrayable;
+use function Inspira\Utils\stringable;
 
 /**
  * @property $items

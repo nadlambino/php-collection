@@ -6,6 +6,7 @@ namespace Inspira\Collection\Traits;
 
 use Closure;
 use Inspira\Collection\Exceptions\ColumnNotFoundException;
+use function Inspira\Utils\stringable;
 
 /**
  * The Unique trait provides functionality to filter unique items in a collection
